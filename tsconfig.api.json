@@ -1,6 +1,10 @@
 {
   "extends": "@electron-toolkit/tsconfig/tsconfig.node.json",
-  "include": ["./api/**/*"],
+  "include": [
+    "./api/**/*",
+    "./src/hono.ts",
+    "./src/env.ts"
+  ],
   "compilerOptions": {
     "composite": true,
     "moduleResolution": "Bundler",

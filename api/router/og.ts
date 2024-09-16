@@ -1,6 +1,8 @@
+import type { FastifyInstance } from "fastify"
+
 import { createApiClient, getTokenFromCookie } from "../lib/api-client"
 
-export const ogRoute = (app: App) => {
+export const ogRoute = (app: FastifyInstance) => {
   app.get("/og/:type/:id", async (req, reply) => {
     const { type, id } = req.params
     const { width, height } = req.query

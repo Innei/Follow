@@ -14,10 +14,6 @@ export const config = {
 
 const app = Fastify({})
 
-declare global {
-  export type App = typeof app
-}
-
 await app.register(middie, {
   hook: "onRequest",
 })

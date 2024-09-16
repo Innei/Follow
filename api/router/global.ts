@@ -3,13 +3,13 @@ import { createRequire } from "node:module"
 import path, { dirname, resolve } from "node:path"
 import { fileURLToPath } from "node:url"
 
-import type { FastifyRequest } from "fastify"
+import type { FastifyInstance, FastifyRequest } from "fastify"
 
 import { injectMetaHandler } from "../lib/meta-handler"
 
 const require = createRequire(import.meta.url)
 
-const devHandler = (app: App) => {
+const devHandler = (app: FastifyInstance) => {
   app.get("*", async (req, reply) => {
     const url = req.originalUrl
 
@@ -31,7 +31,7 @@ const devHandler = (app: App) => {
     }
   })
 }
-const handler = (app: App) => {
+const handler = (app: FastifyInstance) => {
   app.get("*", async (req, reply) => {
     const __dirname = dirname(fileURLToPath(import.meta.url))
     let template = readFileSync(path.resolve(__dirname, "../web/index.html"), "utf-8")
