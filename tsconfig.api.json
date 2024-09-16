@@ -1,0 +1,14 @@
+{
+  "extends": "@electron-toolkit/tsconfig/tsconfig.node.json",
+  "include": ["./api/**/*"],
+  "compilerOptions": {
+    "composite": true,
+    "moduleResolution": "Bundler",
+    "noImplicitReturns": false,
+    "noUnusedLocals": false,
+    "noUnusedParameters": false,
+    "baseUrl": ".",
+    "module": "esnext",
+    "paths": {}
+  }
+}
