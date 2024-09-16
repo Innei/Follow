@@ -11,10 +11,6 @@
     {
       "source": "/__debug_proxy/:path*",
       "destination": "/__debug_proxy.html"
-    },
-    {
-      "source": "/(.*)",
-      "destination": "/index.html"
     }
   ]
 }
