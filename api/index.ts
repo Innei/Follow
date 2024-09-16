@@ -8,10 +8,6 @@ import Fastify from "fastify"
 import { globalRoute } from "./router/global"
 import { ogRoute } from "./router/og"
 
-export const config = {
-  runtime: "nodejs",
-}
-
 const app = Fastify({})
 
 await app.register(middie, {
