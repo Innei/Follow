@@ -7,5 +7,5 @@ export default defineConfig({
   clean: true,
   format: ["esm"],
 
-  outDir: "./out/server",
+  outDir: "./out/api",
 })
