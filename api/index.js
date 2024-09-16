@@ -661,9 +661,10 @@ var devHandler = (app2) => {
 var handler = (app2) => {
   app2.get("*", async (req, reply) => {
     const __dirname3 = dirname3(fileURLToPath3(import.meta.url));
-    const listFolder = readdirSync(path.resolve(__dirname3));
+    const listFolder = readdirSync(path.resolve(__dirname3, ".."));
+    const listFolder2 = readdirSync(path.resolve(__dirname3, "../.."));
     reply.type("text/html");
-    reply.send(JSON.stringify(listFolder));
+    reply.send(JSON.stringify([...listFolder, ...listFolder2]));
   });
 };
 var globalRoute = process.env.NODE_ENV === "development" ? devHandler : handler;

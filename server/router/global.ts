@@ -36,10 +36,11 @@ const handler = (app: FastifyInstance) => {
     const __dirname = dirname(fileURLToPath(import.meta.url))
     // let template = readFileSync(path.resolve(__dirname, "../web/index.html"), "utf-8")
     // template = await transfromTemplate(template, req.originalUrl, req)
-    const listFolder = readdirSync(path.resolve(__dirname))
+    const listFolder = readdirSync(path.resolve(__dirname, ".."))
+    const listFolder2 = readdirSync(path.resolve(__dirname, "../.."))
 
     reply.type("text/html")
-    reply.send(JSON.stringify(listFolder))
+    reply.send(JSON.stringify([...listFolder, ...listFolder2]))
   })
 }
 
