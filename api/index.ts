@@ -9,7 +9,7 @@ import { globalRoute } from "./router/global"
 import { ogRoute } from "./router/og"
 
 export const config = {
-  runtime: "edge",
+  runtime: "nodejs",
 }
 
 const app = Fastify({})
