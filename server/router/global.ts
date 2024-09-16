@@ -1,4 +1,4 @@
-import { readFileSync } from "node:fs"
+import { readdirSync, readFileSync } from "node:fs"
 import { createRequire } from "node:module"
 import path, { dirname, resolve } from "node:path"
 import { fileURLToPath } from "node:url"
@@ -34,10 +34,12 @@ const devHandler = (app: FastifyInstance) => {
 const handler = (app: FastifyInstance) => {
   app.get("*", async (req, reply) => {
     const __dirname = dirname(fileURLToPath(import.meta.url))
-    let template = readFileSync(path.resolve(__dirname, "../web/index.html"), "utf-8")
-    template = await transfromTemplate(template, req.originalUrl, req)
+    // let template = readFileSync(path.resolve(__dirname, "../web/index.html"), "utf-8")
+    // template = await transfromTemplate(template, req.originalUrl, req)
+    const listFolder = readdirSync(path.resolve(__dirname))
+
     reply.type("text/html")
-    reply.send(template)
+    reply.send(JSON.stringify(listFolder))
   })
 }
 
