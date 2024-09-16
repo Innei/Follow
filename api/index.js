@@ -13,7 +13,7 @@ import middie from "@fastify/middie";
 import Fastify from "fastify";
 
 // server/router/global.ts
-import { readdirSync, readFileSync } from "node:fs";
+import { readFileSync } from "node:fs";
 import { createRequire } from "node:module";
 import path, { dirname as dirname3, resolve as resolve3 } from "node:path";
 import { fileURLToPath as fileURLToPath3 } from "node:url";
@@ -660,11 +660,18 @@ var devHandler = (app2) => {
 };
 var handler = (app2) => {
   app2.get("*", async (req, reply) => {
+    const pathname = req.originalUrl;
     const __dirname3 = dirname3(fileURLToPath3(import.meta.url));
-    const listFolder = readdirSync(path.resolve(__dirname3, ".."));
-    const listFolder2 = readdirSync(path.resolve(__dirname3, "../.."));
+    if (pathname.startsWith("/assets")) {
+      const subPath = pathname.replace("/assets", "");
+      const content = readFileSync(path.resolve(__dirname3, `../out/web/assets${subPath}`), "utf-8");
+      const type = subPath.endsWith(".css") ? "text/css" : "application/javascript";
+      reply.type(type);
+      reply.send(content);
+    }
+    let template = readFileSync(path.resolve(__dirname3, "../out/web/index.html"), "utf-8");
     reply.type("text/html");
-    reply.send(JSON.stringify([...listFolder, ...listFolder2]));
+    reply.send(template);
   });
 };
 var globalRoute = process.env.NODE_ENV === "development" ? devHandler : handler;
