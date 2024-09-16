@@ -18,7 +18,7 @@
     "build": "npm run typecheck && electron-vite build --outDir=dist && electron-forge make",
     "build:macos": "npm run typecheck && electron-vite build --outDir=dist && electron-forge make --arch=universal --platform=darwin",
     "build:server": "rm -rf out/server && tsup",
-    "build:ssr": "npm run build:server && npm run build:web && cp -R server ./out/api",
+    "build:ssr": "npm run build:server && npm run build:web && cp -R server ./api",
     "build:web": "rm -rf out/web && vite build",
     "bump": "vv",
     "dev": "electron-vite dev --outDir=dist",
