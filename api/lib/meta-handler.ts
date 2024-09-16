@@ -15,12 +15,14 @@ export async function injectMetaHandler(url: string, req: FastifyRequest) {
     case url.startsWith("/feed"): {
       const parsedUrl = new URL(url, "https://app.follow.is")
       const feedId = parsedUrl.pathname.split("/")[2]
-      const feed = await apiClient.feeds
+      const feed: any = await apiClient.feeds
         .$get({
           query: {
             id: feedId,
           },
         })
+
+        // @ts-ignore
         .then((res) => res.data.feed)
 
       if (!feed) {

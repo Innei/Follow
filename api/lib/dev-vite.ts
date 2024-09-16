@@ -16,6 +16,8 @@ export const registerDevViteServer = async (app: FastifyInstance) => {
     configFile: resolve(root, "vite.config.ts"),
   })
   globalVite = vite
+
+  // @ts-ignore
   app.use(vite.middlewares)
   return vite
 }

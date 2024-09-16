@@ -6,7 +6,6 @@ import { hc } from "hono/client"
 import { ofetch } from "ofetch"
 
 import PKG from "../../package.json"
-import { env } from "../../src/env"
 import type { AppType } from "../../src/hono"
 
 const __dirname = dirname(fileURLToPath(import.meta.url))
@@ -15,7 +14,7 @@ config({
 })
 export const createApiClient = (authSessionToken: string) => {
   const apiFetch = ofetch.create({
-    baseURL: env.VITE_API_URL,
+    baseURL: process.env.VITE_API_URL,
     credentials: "include",
 
     retry: false,
