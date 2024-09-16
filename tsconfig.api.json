@@ -1,9 +1,10 @@
 {
   "extends": "@electron-toolkit/tsconfig/tsconfig.node.json",
   "include": [
-    "./api/**/*",
+    "server/**/*",
     "./src/hono.ts",
-    "./src/env.ts"
+    "./src/env.ts",
+    "./server/**/*"
   ],
   "compilerOptions": {
     "composite": true,
