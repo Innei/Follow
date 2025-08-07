@@ -1,14 +1,14 @@
 name: 🖥️ Build Desktop
 
 on:
-  push:
-    branches:
-      - "**"
-    paths:
-      - "apps/desktop/**"
-      - "packages/**"
-      - "pnpm-lock.yaml"
-      - ".github/workflows/build-desktop.yml"
+  # push:
+  #   branches:
+  #     - "**"
+  #   paths:
+  #     - "apps/desktop/**"
+  #     - "packages/**"
+  #     - "pnpm-lock.yaml"
+  #     - ".github/workflows/build-desktop.yml"
   workflow_dispatch:
     inputs:
       tag_version:
