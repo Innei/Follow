@@ -354,6 +354,7 @@ export const useEntryActions = ({
         id: COMMAND_ID.entry.openInBrowser,
         hide: !entry.url,
         onClick: runCmdFn(COMMAND_ID.entry.openInBrowser, [{ entryId }]),
+        shortcut: shortcuts[COMMAND_ID.entry.openInBrowser],
         entryId,
       }),
       new EntryActionMenuItem({
