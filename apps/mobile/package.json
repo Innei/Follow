@@ -6,6 +6,7 @@
   "scripts": {
     "android": "expo run:android",
     "bump": "vv",
+    "changelog:generate": "tsx ../../packages/changelog-cli/index.ts",
     "dev": "npm run start",
     "eas-build-post-install": "rm -rf $TMPDIR/metro-cache",
     "eas-build-pre-install": "command -v pod >/dev/null 2>&1 && pod repo update || echo 'CocoaPods not found, skipping pod repo update'",
@@ -44,7 +45,7 @@
     "@react-native-masked-view/masked-view": "0.3.2",
     "@react-native-menu/menu": "1.2.3",
     "@react-native-picker/picker": "2.11.1",
-    "@shopify/flash-list": "1.8.3",
+    "@shopify/flash-list": "2.0.0",
     "@tanstack/query-sync-storage-persister": "5.81.5",
     "@tanstack/react-query": "5.81.5",
     "@tanstack/react-query-persist-client": "5.81.5",
@@ -142,7 +143,7 @@
     "babel-plugin-inline-import": "3.0.0",
     "eas-cli": "16.13.4",
     "expo-drizzle-studio-plugin": "0.2.0",
-    "nbump": "2.1.3",
+    "nbump": "2.1.5",
     "postcss": "8.5.6",
     "sf-symbols-typescript": "2.1.0",
     "typescript": "catalog:"

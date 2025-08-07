@@ -8,6 +8,7 @@ import type { FeedModel } from "@follow/models/types"
 import { useEntry } from "@follow/store/entry/hooks"
 import { useFeedById } from "@follow/store/feed/hooks"
 import { useIsInbox } from "@follow/store/inbox/hooks"
+import { thenable } from "@follow/utils"
 import { nextFrame, stopPropagation } from "@follow/utils/dom"
 import { EventBus } from "@follow/utils/event-bus"
 import { clsx, cn } from "@follow/utils/utils"
@@ -23,6 +24,8 @@ import { useInPeekModal } from "~/components/ui/modal/inspire/InPeekModal"
 import { HotkeyScope } from "~/constants"
 import { useRouteParamsSelector } from "~/hooks/biz/useRouteParams"
 import { useFeedSafeUrl } from "~/hooks/common/useFeedSafeUrl"
+import { useBlockActions } from "~/modules/ai-chat/store/hooks"
+import { BlockSliceAction } from "~/modules/ai-chat/store/slices/block.slice"
 import { COMMAND_ID } from "~/modules/command/commands/id"
 
 import { ApplyEntryActions } from "../../ApplyEntryActions"
@@ -56,11 +59,12 @@ const EntryContentImpl: Component<EntryContentProps> = ({
 
     return { feedId, inboxId: inboxHandle, title, url }
   })
-  useTitle(entry?.title)
+  if (!entry) throw thenable
 
-  const feed = useFeedById(entry?.feedId)
+  useTitle(entry.title)
+  const feed = useFeedById(entry.feedId)
 
-  const isInbox = useIsInbox(entry?.inboxId)
+  const isInbox = useIsInbox(entry.inboxId)
   const isInReadabilityMode = useEntryIsInReadability(entryId)
 
   const { error, content, isPending } = useEntryContent(entryId)
@@ -95,10 +99,21 @@ const EntryContentImpl: Component<EntryContentProps> = ({
     FeedViewType.SocialMedia,
     FeedViewType.Videos,
   ].includes(view)
-  if (!entry) return null
+
+  const { addOrUpdateBlock, removeBlock } = useBlockActions()
+  useEffect(() => {
+    addOrUpdateBlock({
+      id: BlockSliceAction.SPECIAL_TYPES.mainEntry,
+      type: "mainEntry",
+      value: entryId,
+    })
+    return () => {
+      removeBlock(BlockSliceAction.SPECIAL_TYPES.mainEntry)
+    }
+  }, [addOrUpdateBlock, entryId, removeBlock])
 
   return (
-    <div className={cn(className, "flex flex-col")}>
+    <div className={cn(className, "@container flex flex-col")}>
       <EntryCommandShortcutRegister entryId={entryId} view={view} />
       {!isInPeekModal && (
         <EntryHeader

@@ -9,6 +9,7 @@ import type { FeedModel } from "@follow/models/types"
 import { useEntry } from "@follow/store/entry/hooks"
 import { useFeedById } from "@follow/store/feed/hooks"
 import { useIsInbox } from "@follow/store/inbox/hooks"
+import { thenable } from "@follow/utils"
 import { nextFrame, stopPropagation } from "@follow/utils/dom"
 import { EventBus } from "@follow/utils/event-bus"
 import { clsx, cn } from "@follow/utils/utils"
@@ -70,6 +71,8 @@ const EntryContentImpl: Component<EntryContentProps> = ({
 
     return { feedId, inboxId: inboxHandle, title, url }
   })
+  if (!entry) throw thenable
+
   useTitle(entry?.title)
 
   const feed = useFeedById(entry?.feedId)
@@ -110,7 +113,6 @@ const EntryContentImpl: Component<EntryContentProps> = ({
     FeedViewType.SocialMedia,
     FeedViewType.Videos,
   ].includes(view)
-  if (!entry) return null
 
   return (
     <>
@@ -235,8 +237,6 @@ const EntryContentImpl: Component<EntryContentProps> = ({
         </EntryScrollArea>
         <SourceContentPanel src={safeUrl ?? "#"} />
       </Focusable>
-
-      {/* <React.Suspense>{!isInPeekModal && <AISmartSidebar entryId={entryId} />}</React.Suspense> */}
     </>
   )
 }
