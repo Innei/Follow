@@ -1,13 +1,13 @@
 {
   "name": "Folo",
   "type": "module",
-  "version": "1.1.0",
+  "version": "1.9.0",
   "private": true,
   "description": "Follow everything in one place",
   "author": "Folo Team",
   "homepage": "https://github.com/RSSNext",
   "repository": {
-    "url": "https://github.com/RSSNext/Folo",
+    "url": "https://github.com/innei/follow",
     "type": "git"
   },
   "main": "./dist/main/index.js",
