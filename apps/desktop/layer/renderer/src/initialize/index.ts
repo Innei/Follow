@@ -7,6 +7,7 @@ import { repository } from "@pkg"
 import { enableMapSet } from "immer"
 
 import { initI18n } from "~/i18n"
+import { hydrateSessionsFromLocalDb } from "~/modules/ai-chat-session"
 import { settingSyncQueue } from "~/modules/settings/helper/sync-queue"
 import { ElectronCloseEvent, ElectronShowEvent } from "~/providers/invalidate-query-provider"
 
@@ -14,9 +15,9 @@ import { subscribeNetworkStatus } from "../atoms/network"
 import { appLog } from "../lib/log"
 import { initAnalytics } from "./analytics"
 import { registerHistoryStack } from "./history"
-import { hydrateSettings } from "./hydrate"
 import { doMigration } from "./migrates"
 import { initSentry } from "./sentry"
+import { initializeSettings } from "./settings"
 
 declare global {
   interface Window {
@@ -34,9 +35,7 @@ export const initializeApp = async () => {
   })
 
   if (DEV) {
-    const favicon = await import("/favicon-dev.ico?url")
-
-    const url = new URL(favicon.default, import.meta.url).href
+    const url = "/favicon-dev.ico"
 
     // Change favicon
     const $icon = document.head.querySelector("link[rel='icon']")
@@ -57,6 +56,7 @@ export const initializeApp = async () => {
   initializeDayjs()
   registerHistoryStack()
 
+  hydrateSessionsFromLocalDb()
   // Set Environment
   document.documentElement.dataset.buildType = ELECTRON_BUILD ? "electron" : "web"
 
@@ -80,7 +80,7 @@ export const initializeApp = async () => {
 
   subscribeNetworkStatus()
 
-  apm("hydrateSettings", hydrateSettings)
+  apm("initializeSettings", initializeSettings)
 
   initSentry()
   await apm("i18n", initI18n)

@@ -119,7 +119,7 @@ const AddListButton = () => {
 const ItemSeparatorComponent = () => {
   return (
     <View
-      className="bg-opaque-separator/50 ml-24 h-px flex-1"
+      className="ml-24 h-px flex-1 bg-opaque-separator/50"
       collapsable={false}
       style={{
         transform: [
@@ -188,32 +188,34 @@ const ListItemCellImpl: ListRenderItem<ListModel> = ({ item: list }) => {
         </View>
         <View className="ml-4 flex-1">
           <Text
-            className="text-label text-lg font-semibold leading-tight"
+            className="text-lg font-semibold leading-tight text-label"
             numberOfLines={1}
             ellipsizeMode="middle"
           >
             {title}
           </Text>
           {!!description && (
-            <Text className="text-secondary-label text-base" numberOfLines={4}>
+            <Text className="text-base text-secondary-label" numberOfLines={4}>
               {description}
             </Text>
           )}
           <View className="flex-row items-center gap-1">
-            {!!views[list.view]?.icon &&
-              createElement(views[list.view]!.icon, {
-                color: views[list.view]!.activeColor,
+            {!!views.find((v) => v.view === list.view)?.icon &&
+              createElement(views.find((v) => v.view === list.view)!.icon, {
+                color: views.find((v) => v.view === list.view)!.activeColor,
                 height: 16,
                 width: 16,
               })}
-            {!!views[list.view]?.name && (
-              <Text className="text-secondary-label text-base">{t(views[list.view]!.name)}</Text>
+            {!!views.find((v) => v.view === list.view)?.name && (
+              <Text className="text-base text-secondary-label">
+                {t(views.find((v) => v.view === list.view)!.name)}
+              </Text>
             )}
           </View>
         </View>
 
         <View
-          className="bg-opaque-separator mx-4 h-full"
+          className="mx-4 h-full bg-opaque-separator"
           style={{
             width: StyleSheet.hairlineWidth,
           }}
@@ -221,18 +223,18 @@ const ListItemCellImpl: ListRenderItem<ListModel> = ({ item: list }) => {
         <View className="w-16 gap-1">
           <View className="flex-row items-center gap-1">
             <PowerIcon height={16} width={16} color={accentColor} />
-            <Text className="text-secondary-label text-sm">{list.fee}</Text>
+            <Text className="text-sm text-secondary-label">{list.fee}</Text>
           </View>
 
           <View className="flex-row items-center gap-1">
             <UserAdd2CuteFiIcon height={16} width={16} color={accentColor} />
-            <Text className="text-secondary-label text-sm">{listData?.subscriptionCount || 0}</Text>
+            <Text className="text-sm text-secondary-label">{listData?.subscriptionCount || 0}</Text>
           </View>
 
           {!!listData?.purchaseAmount && (
             <View className="flex-row items-center gap-1">
               <Wallet2CuteFiIcon height={16} width={16} color={accentColor} />
-              <Balance className="text-secondary-label text-sm">
+              <Balance className="text-sm text-secondary-label">
                 {BigInt(listData.purchaseAmount)}
               </Balance>
             </View>

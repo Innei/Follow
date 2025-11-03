@@ -8,25 +8,24 @@ import { FeedTitle } from "~/modules/feed/feed-title"
 import { readableContentMaxWidth } from "../styles"
 import type { EntryItemStatelessProps, UniversalItemProps } from "../types"
 
-export function NotificationItem({ entryId, entryPreview, translation }: UniversalItemProps) {
-  return <ListItem entryId={entryId} entryPreview={entryPreview} translation={translation} simple />
+export function NotificationItem({ entryId, translation }: UniversalItemProps) {
+  return <ListItem entryId={entryId} translation={translation} simple />
 }
 
 NotificationItem.wrapperClassName = readableContentMaxWidth
 
 export function NotificationItemStateLess({ entry, feed }: EntryItemStatelessProps) {
   return (
-    <div className="relative w-full max-w-lg select-none">
-      <div className="group relative flex py-4 pl-3 pr-2">
-        <FeedIcon feed={feed} fallback />
-
-        <div className="-mt-0.5 line-clamp-4 flex-1 text-sm leading-tight">
-          <div className="text-text-secondary flex gap-1 text-[10px] font-bold">
-            <FeedTitle feed={feed} />
-            <span>·</span>
-            <span>{!!entry.publishedAt && <RelativeTime date={entry.publishedAt} />}</span>
-          </div>
-          <div className="relative my-0.5 break-words">{entry.title}</div>
+    <div className="group relative flex cursor-menu py-4">
+      <FeedIcon target={feed} fallback className="mr-2 size-5" />
+      <div className="-mt-0.5 min-w-0 flex-1 text-sm leading-tight">
+        <div className="flex gap-1 text-[10px] font-bold text-text-secondary">
+          <FeedTitle feed={feed} />
+          <span>·</span>
+          <span>{!!entry.publishedAt && <RelativeTime date={entry.publishedAt} />}</span>
+        </div>
+        <div className="relative my-0.5 truncate break-words font-medium text-text">
+          {entry.title}
         </div>
       </div>
     </div>
@@ -34,11 +33,11 @@ export function NotificationItemStateLess({ entry, feed }: EntryItemStatelessPro
 }
 
 export const NotificationItemSkeleton = (
-  <div className="relative w-full max-w-lg select-none">
-    <div className="group relative flex py-4 pl-3 pr-2">
+  <div className={`relative w-full select-none ${readableContentMaxWidth}`}>
+    <div className="group relative flex py-4">
       <Skeleton className="mr-2 size-5 shrink-0 overflow-hidden rounded-sm" />
       <div className="-mt-0.5 line-clamp-4 flex-1 text-sm leading-tight">
-        <div className="text-material-opaque flex gap-1 text-[10px] font-bold">
+        <div className="flex gap-1 text-[10px] font-bold text-material-opaque">
           <Skeleton className="h-3 w-32 truncate" />
           <span>·</span>
           <Skeleton className="h-3 w-12 shrink-0" />

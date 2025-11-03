@@ -1,8 +1,10 @@
 import { callWindowExposeRenderer } from "@follow/shared/bridge"
+import { detectIsEditableElement } from "@follow/utils"
 
 interface ShortcutDefinition {
   accelerator: string
   action: () => void
+  inputBypass?: boolean
 }
 
 const parseAccelerator = (
@@ -23,6 +25,7 @@ export const registerAppGlobalShortcuts = () => {
     {
       accelerator: "CmdOrCtrl+,",
       action: () => window.router.showSettings(),
+      inputBypass: true,
     },
     {
       accelerator: "CmdOrCtrl+T",
@@ -41,15 +44,12 @@ export const registerAppGlobalShortcuts = () => {
   ]
 
   const handleKeydown = (e: KeyboardEvent) => {
-    // Prevent on input, textarea, [contenteditable]
-    if (
-      ["INPUT", "TEXTAREA"].includes((e.target as HTMLElement)?.tagName) ||
-      (e.target as HTMLElement)?.contentEditable === "true"
-    ) {
-      return
-    }
+    shortcuts.forEach(({ accelerator, action, inputBypass }) => {
+      // Prevent on input, textarea, [contenteditable]
+      if (!inputBypass && detectIsEditableElement(e.target as HTMLElement)) {
+        return
+      }
 
-    shortcuts.forEach(({ accelerator, action }) => {
       const { key, ctrl, meta, shift } = parseAccelerator(accelerator)
 
       const matchesKey = e.key.toLowerCase() === key.toLowerCase()

@@ -1,4 +1,4 @@
-import type { MediaModel } from "@follow/shared/hono"
+import type { MediaModel } from "@follow/database/schemas/types"
 import { stopPropagation } from "@follow/utils/dom"
 import { cn } from "@follow/utils/utils"
 import useEmblaCarousel from "embla-carousel-react"
@@ -19,6 +19,7 @@ export function SwipeMedia({
   imgClassName,
   onPreview,
   proxySize = defaultProxySize,
+  fitContainer,
 }: {
   media?: MediaModel[] | null
   className?: string
@@ -28,6 +29,7 @@ export function SwipeMedia({
     width: number
     height: number
   } | null
+  fitContainer?: boolean
 }) {
   const uniqMedia = media ? uniqBy(media, "url") : []
 
@@ -35,13 +37,23 @@ export function SwipeMedia({
 
   const [emblaRef, emblaApi] = useEmblaCarousel({ loop: true }, [WheelGesturesPlugin()])
 
-  const scrollPrev = useCallback(() => {
-    if (emblaApi) emblaApi.scrollPrev()
-  }, [emblaApi])
+  const scrollPrev = useCallback(
+    (e) => {
+      e.preventDefault()
+      e.stopPropagation()
+      if (emblaApi) emblaApi.scrollPrev()
+    },
+    [emblaApi],
+  )
 
-  const scrollNext = useCallback(() => {
-    if (emblaApi) emblaApi.scrollNext()
-  }, [emblaApi])
+  const scrollNext = useCallback(
+    (e) => {
+      e.preventDefault()
+      e.stopPropagation()
+      if (emblaApi) emblaApi.scrollNext()
+    },
+    [emblaApi],
+  )
 
   if (!media) return null
 
@@ -70,6 +82,8 @@ export function SwipeMedia({
                   loading="lazy"
                   proxy={proxySize || undefined}
                   blurhash={med.blurhash}
+                  width={med.width}
+                  height={med.height}
                   onClick={(e) => {
                     if (onPreview) {
                       e.stopPropagation()
@@ -78,6 +92,7 @@ export function SwipeMedia({
                   }}
                   showFallback={true}
                   fitContent
+                  fitContainer={fitContainer}
                 />
               </div>
             ))}
@@ -85,21 +100,21 @@ export function SwipeMedia({
           {emblaApi?.canScrollPrev() && (
             <button
               type="button"
-              className="center absolute left-2 top-1/2 size-6 -translate-y-1/2 rounded-full bg-gray-800 text-white opacity-0 duration-200 group-hover:opacity-100"
+              className="center absolute left-2 top-1/2 size-8 -translate-y-1/2 rounded-full border border-border bg-material-medium text-white opacity-0 backdrop-blur-background duration-200 group-hover:opacity-100"
               onClick={scrollPrev}
               onDoubleClick={stopPropagation}
             >
-              <i className="i-mingcute-arrow-left-line" />
+              <i className="i-mingcute-left-line" />
             </button>
           )}
           {emblaApi?.canScrollNext() && (
             <button
               type="button"
-              className="center absolute right-2 top-1/2 size-6 -translate-y-1/2 rounded-full bg-gray-800 text-white opacity-0 duration-200 group-hover:opacity-100"
+              className="center absolute right-2 top-1/2 size-8 -translate-y-1/2 rounded-full border border-border bg-material-medium text-white opacity-0 backdrop-blur-background duration-200 group-hover:opacity-100"
               onClick={scrollNext}
               onDoubleClick={stopPropagation}
             >
-              <i className="i-mingcute-arrow-right-line" />
+              <i className="i-mingcute-right-line" />
             </button>
           )}
         </div>

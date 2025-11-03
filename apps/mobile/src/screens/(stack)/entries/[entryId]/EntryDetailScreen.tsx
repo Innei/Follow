@@ -5,6 +5,7 @@ import { useFeedById } from "@follow/store/feed/hooks"
 import { usePrefetchEntryTranslation } from "@follow/store/translation/hooks"
 import { useAutoMarkAsRead } from "@follow/store/unread/hooks"
 import { PortalProvider } from "@gorhom/portal"
+import * as WebBrowser from "expo-web-browser"
 import { atom, useAtomValue, useSetAtom } from "jotai"
 import { useCallback, useEffect, useMemo } from "react"
 import { View } from "react-native"
@@ -22,10 +23,10 @@ import { ItemPressableStyle } from "@/src/components/ui/pressable/enum"
 import { ItemPressable } from "@/src/components/ui/pressable/ItemPressable"
 import { Text } from "@/src/components/ui/typography/Text"
 import { CalendarTimeAddCuteReIcon } from "@/src/icons/calendar_time_add_cute_re"
+import { Eye2CuteReIcon } from "@/src/icons/eye_2_cute_re"
 import { openLink } from "@/src/lib/native"
 import { useNavigation } from "@/src/lib/navigation/hooks"
 import type { NavigationControllerView } from "@/src/lib/navigation/types"
-import { checkLanguage } from "@/src/lib/translation"
 import { EntryContentContext, useEntryContentContext } from "@/src/modules/entry-content/ctx"
 import { EntryAISummary } from "@/src/modules/entry-content/EntryAISummary"
 import { EntryNavigationHeader } from "@/src/modules/entry-content/EntryNavigationHeader"
@@ -46,6 +47,7 @@ export const EntryDetailScreen: NavigationControllerView<{
     summary: state.settings?.summary,
     translation: state.settings?.translation,
     readability: state.settings?.readability,
+    sourceContent: state.settings?.sourceContent,
   }))
   useAutoMarkAsRead(entryId, !!entry)
   const insets = useSafeAreaInsets()
@@ -54,9 +56,10 @@ export const EntryDetailScreen: NavigationControllerView<{
       showAISummaryAtom: atom(entry?.summary || false),
       showAITranslationAtom: atom(!!entry?.translation || false),
       showReadabilityAtom: atom(entry?.readability || false),
+      showSourceContentAtom: atom(entry?.sourceContent || false),
       titleHeightAtom: atom(0),
     }),
-    [entry?.readability, entry?.summary, entry?.translation],
+    [entry?.readability, entry?.sourceContent, entry?.summary, entry?.translation],
   )
   const navigation = useNavigation()
   const nextEntryId = useMemo(() => {
@@ -134,7 +137,8 @@ export const EntryDetailScreen: NavigationControllerView<{
   )
 }
 const EntryContentWebViewWithContext = ({ entryId }: { entryId: string }) => {
-  const { showReadabilityAtom, showAITranslationAtom } = useEntryContentContext()
+  const { showReadabilityAtom, showAITranslationAtom, showSourceContentAtom } =
+    useEntryContentContext()
   const showReadabilityOnce = useAtomValue(showReadabilityAtom)
   const translationSetting = useGeneralSettingKey("translation")
   const showTranslationOnce = useAtomValue(showAITranslationAtom)
@@ -143,14 +147,14 @@ const EntryContentWebViewWithContext = ({ entryId }: { entryId: string }) => {
   const entry = useEntry(entryId, (state) => ({
     content: state.content,
     readabilityContent: state.readabilityContent,
+    url: state.url,
   }))
   usePrefetchEntryTranslation({
     entryIds: [entryId],
     withContent: true,
     target: showReadabilityOnce && entry?.readabilityContent ? "readabilityContent" : "content",
     language: actionLanguage,
-    checkLanguage,
-    setting: translation,
+    enabled: translation,
   })
 
   // Auto toggle readability when content is empty
@@ -166,6 +170,14 @@ const EntryContentWebViewWithContext = ({ entryId }: { entryId: string }) => {
       entrySyncServices.fetchEntryReadabilityContent(entryId)
     }
   }, [showReadabilityOnce, entryId])
+
+  const showSourceContent = useAtomValue(showSourceContentAtom)
+  useEffect(() => {
+    if (showSourceContent && entry?.url) {
+      WebBrowser.openBrowserAsync(entry?.url)
+    }
+  }, [entry?.url, showSourceContent])
+
   return (
     <EntryContentWebView
       entryId={entryId}
@@ -190,7 +202,7 @@ const EntryInfo = ({ entryId }: { entryId: string }) => {
       {feed && (
         <View className="flex shrink flex-row items-center gap-2">
           <FeedIcon feed={feed} />
-          <Text className="text-label shrink text-sm font-medium leading-tight" numberOfLines={1}>
+          <Text className="shrink text-sm font-medium leading-tight text-label" numberOfLines={1}>
             {feed.title?.trim()}
           </Text>
         </View>
@@ -199,12 +211,13 @@ const EntryInfo = ({ entryId }: { entryId: string }) => {
         <CalendarTimeAddCuteReIcon width={16} height={16} color={secondaryLabelColor} />
         <RelativeDateTime
           date={publishedAt}
-          className="text-secondary-label text-sm leading-tight"
+          className="text-sm leading-tight text-secondary-label"
         />
       </View>
       {!hideRecentReader && (
         <View className="flex flex-row items-center gap-1">
-          <Text className="text-secondary-label text-sm leading-tight">{readCount}</Text>
+          <Eye2CuteReIcon width={16} height={16} color={secondaryLabelColor} />
+          <Text className="text-sm leading-tight text-secondary-label">{readCount}</Text>
         </View>
       )}
     </View>

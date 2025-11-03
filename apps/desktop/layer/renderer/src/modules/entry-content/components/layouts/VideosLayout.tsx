@@ -1,26 +1,20 @@
 import { useEntry } from "@follow/store/entry/hooks"
+import { useState } from "react"
 
 import { EntryTitle } from "../EntryTitle"
-import { ContentBody } from "./shared/ContentBody"
+import { ContentBody, MediaTranscript, TranscriptToggle, useTranscription } from "./shared"
 import { VideoPlayer } from "./shared/VideoPlayer"
+import type { EntryLayoutProps } from "./types"
 
-interface VideosLayoutProps {
-  entryId: string
-  compact?: boolean
-  noMedia?: boolean
-  translation?: {
-    content?: string
-    title?: string
-  }
-}
-
-export const VideosLayout: React.FC<VideosLayoutProps> = ({
+export const VideosLayout: React.FC<EntryLayoutProps> = ({
   entryId,
   compact = false,
   noMedia = false,
   translation,
 }) => {
   const entry = useEntry(entryId, (state) => state)
+  const { data: transcriptionData } = useTranscription(entryId)
+  const [showTranscript, setShowTranscript] = useState(false)
 
   if (!entry) return null
 
@@ -37,7 +31,7 @@ export const VideosLayout: React.FC<VideosLayoutProps> = ({
             className="w-full"
           />
         ) : (
-          <div className="center bg-material-medium text-text-secondary aspect-video w-full flex-col gap-1 rounded-md text-sm">
+          <div className="center aspect-video w-full flex-col gap-1 rounded-md bg-material-medium text-sm text-text-secondary">
             <i className="i-mgc-video-cute-fi mb-2 size-12" />
             Video content not available
           </div>
@@ -49,14 +43,30 @@ export const VideosLayout: React.FC<VideosLayoutProps> = ({
         {/* Title */}
         <EntryTitle entryId={entryId} compact={compact} />
 
-        {/* Description/Content */}
-        <ContentBody
-          entryId={entryId}
-          translation={translation}
-          compact={compact}
-          noMedia={true}
-          className="text-base"
+        {/* Content Type Toggle */}
+        <TranscriptToggle
+          showTranscript={showTranscript}
+          onToggle={setShowTranscript}
+          hasTranscript={!!transcriptionData}
         />
+
+        {/* Description/Content or Transcript */}
+        {showTranscript ? (
+          <MediaTranscript
+            className="prose !max-w-full dark:prose-invert"
+            srt={transcriptionData}
+            entryId={entryId}
+            type="subtitle"
+          />
+        ) : (
+          <ContentBody
+            entryId={entryId}
+            translation={translation}
+            compact={compact}
+            noMedia={true}
+            className="text-base"
+          />
+        )}
       </div>
     </div>
   )

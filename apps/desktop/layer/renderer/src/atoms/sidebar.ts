@@ -2,34 +2,26 @@ import { atom } from "jotai"
 
 import { createAtomHooks } from "~/lib/jotai"
 
-import { getIsZenMode, useIsZenMode } from "./settings/ui"
-
 const [
   ,
   ,
-  internal_useTimelineColumnShow,
+  internal_useSubscriptionColumnShow,
   ,
-  internal_getTimelineColumnShow,
+  internal_getSubscriptionShow,
   setTimelineColumnShow,
 ] = createAtomHooks(atom(true))
 
-export const useTimelineColumnShow = () => {
-  const isZenMode = useIsZenMode()
-  return internal_useTimelineColumnShow() && !isZenMode
-}
+export const useSubscriptionColumnShow = internal_useSubscriptionColumnShow
 
-export const getFeedColumnShow = () => {
-  const isZenMode = getIsZenMode()
-  return internal_getTimelineColumnShow() && !isZenMode
-}
+export const getSubscriptionColumnShow = internal_getSubscriptionShow
 
 export { setTimelineColumnShow }
 
 export const [
   ,
   ,
-  useTimelineColumnTempShow,
+  useSubscriptionColumnTempShow,
   ,
-  getTimelineColumnTempShow,
-  setTimelineColumnTempShow,
+  getSubscriptionColumnTempShow,
+  setSubscriptionColumnTempShow,
 ] = createAtomHooks(atom(false))

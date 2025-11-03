@@ -1,4 +1,3 @@
-packages/internal/shared/src/hono.ts
 pnpm-lock.yaml
 
 CHANGELOG.md
@@ -8,5 +7,9 @@ apps/external/postcss.config.cjs
 apps/mobile/android
 apps/mobile/ios
 apps/mobile/native/example
+
+apps/mobile/native/android
+apps/mobile/native/ios
+apps/mobile/.expo
 
 generated-routes.ts

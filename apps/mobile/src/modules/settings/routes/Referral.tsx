@@ -1,4 +1,3 @@
-import { UserRole, UserRoleName } from "@follow/constants"
 import { env } from "@follow/shared/env.rn"
 import { useWhoami } from "@follow/store/user/hooks"
 import { cn } from "@follow/utils"
@@ -25,7 +24,7 @@ import {
 import { MonoText } from "@/src/components/ui/typography/MonoText"
 import { Text } from "@/src/components/ui/typography/Text"
 import { LoveCuteFiIcon } from "@/src/icons/love_cute_fi"
-import { apiClient } from "@/src/lib/api-fetch"
+import { followClient } from "@/src/lib/api-client"
 import type { NavigationControllerView } from "@/src/lib/navigation/types"
 import { toast } from "@/src/lib/toast"
 import { useColor } from "@/src/theme/colors"
@@ -33,21 +32,19 @@ import { useColor } from "@/src/theme/colors"
 const useReferralInfoQuery = () => {
   return useQuery({
     queryKey: ["referral", "info"],
-    queryFn: () => apiClient.referrals.$get().then((res) => res.data),
+    queryFn: () => followClient.api.referrals.getReferrals().then((res) => res.data),
   })
 }
 export const ReferralScreen: NavigationControllerView = () => {
   const { t } = useTranslation("settings")
   const serverConfigs = useServerConfigs()
   const ruleLink = serverConfigs?.REFERRAL_RULE_LINK
-  const requiredInvitationsAmount = serverConfigs?.REFERRAL_REQUIRED_INVITATIONS || 3
   const { data: referralInfo, isLoading } = useReferralInfoQuery()
   const invitations = referralInfo?.invitations
-  const validInvitationsAmount = referralInfo?.invitations.filter((i) => i.usedAt).length || 0
   const user = useWhoami()
   const referralLink = `${env.WEB_URL}/register?referral=${user?.handle || user?.id}`
   const secondaryLabelColor = useColor("secondaryLabel")
-  const progress = (validInvitationsAmount / requiredInvitationsAmount) * 100
+
   return (
     <SafeNavigationScrollView
       className="bg-system-grouped-background"
@@ -67,7 +64,7 @@ export const ReferralScreen: NavigationControllerView = () => {
                 day: referralInfo?.referralCycleDays || 45,
               }}
               parent={({ children }: { children: React.ReactNode }) => (
-                <Text className="text-label mt-3 text-left text-base leading-tight">
+                <Text className="mt-3 text-left text-base leading-tight text-label">
                   {children}
                 </Text>
               )}
@@ -120,29 +117,13 @@ export const ReferralScreen: NavigationControllerView = () => {
         </ContextMenu.Root>
       </GroupedInsetListCard>
 
-      <GroupedInsetListSectionHeader
-        label={`Referral Progress for the Free ${UserRoleName[UserRole.PrePro]} ${validInvitationsAmount}/${requiredInvitationsAmount}:`}
-      />
-      <GroupedInsetListCard>
-        <GroupedInsetListBaseCell>
-          <View className="bg-system-grouped-background h-2 w-full rounded-full">
-            <View
-              className="bg-accent h-2 rounded-full"
-              style={{
-                width: `${progress}%`,
-              }}
-            />
-          </View>
-        </GroupedInsetListBaseCell>
-      </GroupedInsetListCard>
-
       <GroupedInsetListSectionHeader label={"Your Invited Friends"} />
       <GroupedInsetListCard>
         {isLoading && <GroupedInsetActivityIndicatorCell />}
         {invitations?.map((invitation) => (
           <GroupedInsetListBaseCell
             key={invitation.code}
-            className="bg-secondary-system-grouped-background flex-1"
+            className="flex-1 bg-secondary-system-grouped-background"
           >
             <View className="mr-2 shrink flex-row items-center gap-4">
               <UserAvatar
@@ -158,7 +139,7 @@ export const ReferralScreen: NavigationControllerView = () => {
                 >
                   {invitation.user?.name || (!invitation.user ? t("invitation.notUsed") : "")}
                 </Text>
-                <Text className="text-secondary-label text-sm">
+                <Text className="text-sm text-secondary-label">
                   {t("invitation.created_at")} {dayjs(invitation.createdAt).format("YYYY/MM/DD")}
                 </Text>
               </View>

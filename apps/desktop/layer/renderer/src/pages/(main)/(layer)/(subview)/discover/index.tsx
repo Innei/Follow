@@ -2,16 +2,12 @@ import { Divider } from "@follow/components/ui/divider/Divider.js"
 import { useScrollElementUpdate } from "@follow/components/ui/scroll-area/hooks.js"
 import { ScrollArea } from "@follow/components/ui/scroll-area/index.js"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@follow/components/ui/tabs/index.jsx"
-import { UserRole } from "@follow/constants"
-import { useUserRole } from "@follow/store/user/hooks"
-import { cn } from "@follow/utils/utils"
 import { createElement } from "react"
 import { useTranslation } from "react-i18next"
 import { useSearchParams } from "react-router"
 
 import { AppErrorBoundary } from "~/components/common/AppErrorBoundary"
 import { ErrorComponentType } from "~/components/errors/enum"
-import { useActivationModal } from "~/modules/activation"
 import { useSubViewTitle } from "~/modules/app-layout/subview/hooks"
 import { DiscoverForm } from "~/modules/discover/DiscoverForm"
 import { DiscoverImport } from "~/modules/discover/DiscoverImport"
@@ -24,7 +20,6 @@ import { Trending } from "~/modules/trending"
 const tabs: {
   name: I18nKeys
   value: string
-  disableForTrial?: boolean
 }[] = [
   {
     name: "words.search",
@@ -41,7 +36,6 @@ const tabs: {
   {
     name: "words.inbox",
     value: "inbox",
-    disableForTrial: true,
   },
   {
     name: "words.user",
@@ -62,23 +56,13 @@ export function Component() {
   const { t } = useTranslation()
   useSubViewTitle("words.discover")
 
-  const presentActivationModal = useActivationModal()
-  const role = useUserRole()
   const { onUpdateMaxScroll } = useScrollElementUpdate()
-
-  const currentTabs = tabs.map((tab) => {
-    const disabled = tab.disableForTrial && (role === UserRole.Free || role === UserRole.Trial)
-    return {
-      ...tab,
-      disabled,
-    }
-  })
 
   return (
     <div className="flex size-full flex-col px-6 py-8">
       {/* Simple Header */}
       <div className="mx-auto mb-8 max-w-6xl text-center">
-        <h1 className="text-text mb-4 text-3xl font-bold">{t("words.discover")}</h1>
+        <h1 className="mb-4 text-3xl font-bold text-text">{t("words.discover")}</h1>
       </div>
 
       <div className="mx-auto w-full max-w-6xl">
@@ -100,17 +84,12 @@ export function Component() {
           <div className="mb-8">
             <ScrollArea.ScrollArea flex orientation="horizontal" rootClassName="w-full">
               <TabsList className="relative flex w-full">
-                {currentTabs.map((tab) => (
+                {tabs.map((tab) => (
                   <TabsTrigger
                     key={tab.name}
                     value={tab.value}
-                    className={cn(tab.disabled && "cursor-not-allowed opacity-50")}
                     onClick={() => {
-                      if (tab.disabled) {
-                        presentActivationModal()
-                      } else {
-                        onUpdateMaxScroll?.()
-                      }
+                      onUpdateMaxScroll?.()
                     }}
                   >
                     {t(tab.name)}
@@ -122,7 +101,7 @@ export function Component() {
 
           {/* Tab Content */}
           <div className="space-y-8">
-            {currentTabs.map((tab) => (
+            {tabs.map((tab) => (
               <TabsContent key={tab.name} value={tab.value} className="mt-0">
                 <div className={tab.value === "inbox" ? "" : "flex flex-col items-center"}>
                   {createElement(TabComponent[tab.value]! || TabComponent.default, {
@@ -139,14 +118,14 @@ export function Component() {
           <Divider />
 
           <div>
-            <h2 className="text-text mb-6 text-center text-xl font-semibold">Trending</h2>
+            <h2 className="mb-6 text-center text-xl font-semibold text-text">Trending</h2>
             <Trending center />
           </div>
 
           <Divider />
 
           <div>
-            <h2 className="text-text mb-6 text-center text-xl font-semibold">Recommendations</h2>
+            <h2 className="mb-6 text-center text-xl font-semibold text-text">Recommendations</h2>
             <AppErrorBoundary errorType={ErrorComponentType.RSSHubDiscoverError}>
               <Recommendations />
             </AppErrorBoundary>

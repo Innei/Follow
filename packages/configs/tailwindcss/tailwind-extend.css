@@ -51,7 +51,10 @@
   }
 
   .shadow-modal {
-    @apply shadow-2xl shadow-stone-300 dark:shadow-stone-900;
+    box-shadow: 0 8px 20px rgba(0, 0, 0, 0.08);
+  }
+  [theme="dark"] .shadow-modal {
+    box-shadow: 0 8px 20px rgba(0, 0, 0, 0.8);
   }
   /* Utils */
   .no-animation {
@@ -169,13 +172,29 @@
   }
 }
 
-/* Context menu */
+/* Shadow */
 @layer components {
   .shadow-context-menu {
+    --shadow-color: rgba(0, 0, 0, 0.067);
     box-shadow:
-      rgba(0, 0, 0, 0.067) 0px 3px 8px,
-      rgba(0, 0, 0, 0.067) 0px 2px 5px,
-      rgba(0, 0, 0, 0.067) 0px 1px 1px;
+      var(--shadow-color) 0px 3px 8px,
+      var(--shadow-color) 0px 2px 5px,
+      var(--shadow-color) 0px 1px 1px;
+  }
+
+  [data-theme="dark"] .shadow-context-menu {
+    --shadow-color: rgba(255, 255, 255, 0.07);
+  }
+
+  .shadow-ai-chat-floating-panel {
+    --shadow-color: rgba(0, 0, 0, 0.08);
+    box-shadow:
+      -5px -6px 20px 0px var(--shadow-color),
+      10px -5px 20px 0px var(--shadow-color),
+      0px 10px 20px 0px var(--shadow-color);
+  }
+  [data-theme="dark"] .shadow-ai-chat-floating-panel {
+    --shadow-color: rgba(255, 255, 255, 0.04);
   }
 }
 

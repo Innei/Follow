@@ -1,8 +1,7 @@
-import { MdiMeditation } from "@follow/components/icons/Meditation.js"
 import { ActionButton } from "@follow/components/ui/button/index.js"
+import { RSSHubLogo } from "@follow/components/ui/platform-icon/icons.js"
 import { RootPortal } from "@follow/components/ui/portal/index.js"
 import { EllipsisHorizontalTextWithTooltip } from "@follow/components/ui/typography/EllipsisWithTooltip.js"
-import { UserRole } from "@follow/constants"
 import { useMeasure } from "@follow/hooks"
 import { useUserRole } from "@follow/store/user/hooks"
 import { cn } from "@follow/utils/utils"
@@ -12,9 +11,7 @@ import { memo, useCallback, useLayoutEffect, useState } from "react"
 import { useTranslation } from "react-i18next"
 import { useNavigate } from "react-router"
 
-import rsshubLogoUrl from "~/assets/rsshub-icon.png?url"
 import { useIsInMASReview, useServerConfigs } from "~/atoms/server-configs"
-import { useIsZenMode, useSetZenMode } from "~/atoms/settings/ui"
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -23,21 +20,17 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "~/components/ui/dropdown-menu/dropdown-menu"
+import { useFeature } from "~/hooks/biz/useFeature"
 import { UrlBuilder } from "~/lib/url-builder"
 import { useAchievementModal } from "~/modules/achievement/hooks"
 import { usePresentUserProfileModal } from "~/modules/profile/hooks"
 import { useSettingModal } from "~/modules/settings/modal/use-setting-modal-hack"
 import { signOut, useSession } from "~/queries/auth"
 
-import { useActivationModal } from "../activation"
-import { COMMAND_ID } from "../command/commands/id"
-import { useCommandShortcuts } from "../command/hooks/use-command-binding"
 import type { LoginProps } from "./LoginButton"
 import { LoginButton } from "./LoginButton"
 import { UserAvatar } from "./UserAvatar"
 import { UserProBadge } from "./UserProBadge"
-
-const rsshubLogo = new URL(rsshubLogoUrl, import.meta.url).href
 
 export type ProfileButtonProps = LoginProps & {
   animatedAvatar?: boolean
@@ -51,18 +44,14 @@ export const ProfileButton: FC<ProfileButtonProps> = memo((props) => {
   const presentUserProfile = usePresentUserProfileModal("dialog")
   const presentAchievement = useAchievementModal()
   const { t } = useTranslation()
+  const aiEnabled = useFeature("ai")
 
   const [dropdown, setDropdown] = useState(false)
 
   const navigate = useNavigate()
 
   const role = useUserRole()
-  const presentActivationModal = useActivationModal()
-  const zenModeSetting = useIsZenMode()
-  const setZenMode = useSetZenMode()
   const isInMASReview = useIsInMASReview()
-
-  const shortcuts = useCommandShortcuts()
 
   if (status === "unauthenticated") {
     return <LoginButton {...props} />
@@ -72,7 +61,7 @@ export const ProfileButton: FC<ProfileButtonProps> = memo((props) => {
     <DropdownMenu onOpenChange={setDropdown}>
       <DropdownMenuTrigger
         asChild
-        className="focus-visible:bg-theme-item-hover !outline-none data-[state=open]:bg-transparent"
+        className="!outline-none focus-visible:bg-theme-item-hover data-[state=open]:bg-transparent"
       >
         {props.animatedAvatar ? (
           <TransitionAvatar stage={dropdown ? "zoom-in" : ""} />
@@ -82,7 +71,7 @@ export const ProfileButton: FC<ProfileButtonProps> = memo((props) => {
       </DropdownMenuTrigger>
 
       <DropdownMenuContent
-        className="macos:bg-material-opaque min-w-[240px] overflow-visible px-1 pt-6"
+        className="min-w-[240px] overflow-visible px-1 pt-6 macos:bg-material-opaque"
         side="bottom"
         align="center"
       >
@@ -91,7 +80,7 @@ export const ProfileButton: FC<ProfileButtonProps> = memo((props) => {
             <EllipsisHorizontalTextWithTooltip className="mx-auto max-w-[20ch] truncate text-lg">
               {user?.name}
             </EllipsisHorizontalTextWithTooltip>
-            {serverConfig?.REFERRAL_ENABLED ? (
+            {!isInMASReview && serverConfig?.PAYMENT_ENABLED ? (
               <UserProBadge
                 role={role}
                 withText
@@ -129,43 +118,39 @@ export const ProfileButton: FC<ProfileButtonProps> = memo((props) => {
         <DropdownMenuItem
           className="pl-3"
           onClick={() => {
-            if (role !== UserRole.Trial && role !== UserRole.Free) {
-              presentAchievement()
-            } else {
-              presentActivationModal()
-            }
+            presentAchievement()
           }}
           icon={<i className="i-mgc-trophy-cute-re" />}
         >
           {t("user_button.achievement")}
         </DropdownMenuItem>
 
-        {!isInMASReview && (
+        {!isInMASReview && serverConfig?.PAYMENT_ENABLED && (
           <DropdownMenuItem
             className="pl-3"
             onClick={() => {
-              navigate("/power")
+              settingModalPresent("plan")
             }}
             icon={<i className="i-mgc-power-outline" />}
           >
-            {t("user_button.power")}
+            {t("activation.plan.title")}
+          </DropdownMenuItem>
+        )}
+
+        {aiEnabled && (
+          <DropdownMenuItem
+            className="pl-3"
+            onClick={() => {
+              navigate("/ai")
+            }}
+            icon={<i className="i-mgc-ai-cute-re" />}
+          >
+            {t("user_button.ai")}
           </DropdownMenuItem>
         )}
 
         <DropdownMenuSeparator />
 
-        {!zenModeSetting && (
-          <DropdownMenuItem
-            className="pl-3"
-            onClick={() => {
-              setZenMode(true)
-            }}
-            icon={<MdiMeditation className="size-4" />}
-            shortcut={shortcuts[COMMAND_ID.layout.toggleZenMode]}
-          >
-            {t("user_button.zen_mode")}
-          </DropdownMenuItem>
-        )}
         <DropdownMenuItem
           className="pl-3"
           onClick={() => {
@@ -181,7 +166,7 @@ export const ProfileButton: FC<ProfileButtonProps> = memo((props) => {
             onClick={() => {
               navigate("/rsshub")
             }}
-            icon={<img src={rsshubLogo} className="size-3 grayscale" />}
+            icon={<RSSHubLogo className="size-3 grayscale" />}
           >
             {t("words.rsshub")}
           </DropdownMenuItem>

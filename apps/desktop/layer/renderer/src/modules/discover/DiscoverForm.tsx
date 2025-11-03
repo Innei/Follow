@@ -11,13 +11,14 @@ import {
 import { Input } from "@follow/components/ui/input/index.js"
 import { SegmentGroup, SegmentItem } from "@follow/components/ui/segment/index.js"
 import { ResponsiveSelect } from "@follow/components/ui/select/responsive.js"
+import type { DiscoveryItem } from "@follow-app/client-sdk"
 import { zodResolver } from "@hookform/resolvers/zod"
 import { repository } from "@pkg"
 import { useMutation } from "@tanstack/react-query"
 import { produce } from "immer"
 import { atom, useAtomValue, useStore } from "jotai"
-import type { ChangeEvent } from "react"
-import { useCallback, useEffect } from "react"
+import type { ChangeEvent, CompositionEvent } from "react"
+import { startTransition, useCallback, useEffect } from "react"
 import { useForm } from "react-hook-form"
 import { useTranslation } from "react-i18next"
 import { useSearchParams } from "react-router"
@@ -25,28 +26,18 @@ import { z } from "zod"
 
 import { useIsInMASReview } from "~/atoms/server-configs"
 import { useModalStack } from "~/components/ui/modal/stacked/hooks"
-import { apiClient } from "~/lib/api-fetch"
+import { followClient } from "~/lib/api-client"
 
 import { DiscoverFeedCard } from "./DiscoverFeedCard"
 import { FeedForm } from "./FeedForm"
 
-const formSchema = z.object({
-  keyword: z.string().min(1),
-  target: z.enum(["feeds", "lists"]),
-})
-
-const info: Record<
-  string,
-  {
-    label: I18nKeys
-    prefix?: string[]
-    showModal?: boolean
-    default?: string
-    labelSuffix?: React.ReactNode
-  }
-> = {
+const FEED_DISCOVERY_INFO = {
   search: {
     label: "discover.any_url_or_keyword",
+    schema: z.object({
+      keyword: z.string().min(1),
+      target: z.enum(["feeds", "lists"]),
+    }),
   },
   rss: {
     label: "discover.rss_url",
@@ -58,12 +49,15 @@ const info: Record<
         href={`${repository.url}/wiki/Folo-Flavored-Feed-Spec`}
         target="_blank"
         rel="noreferrer"
-        className="text-accent border-accent inline-flex w-auto items-center gap-1 rounded-full border px-2 py-px text-sm font-normal"
+        className="inline-flex w-auto items-center gap-1 rounded-full border border-accent px-2 py-px text-sm font-normal text-accent"
       >
         <i className="i-mgc-book-6-cute-re" />
         <span>Folo Flavored Feed Spec</span>
       </a>
     ),
+    schema: z.object({
+      keyword: z.string().url().startsWith("https://"),
+    }),
   },
   rsshub: {
     label: "discover.rss_hub_route",
@@ -75,21 +69,39 @@ const info: Record<
         href="https://docs.rsshub.app/"
         target="_blank"
         rel="noreferrer"
-        className="text-accent border-accent inline-flex w-auto items-center gap-1 rounded-full border px-2 py-px text-sm font-normal"
+        className="inline-flex w-auto items-center gap-1 rounded-full border border-accent px-2 py-px text-sm font-normal text-accent"
       >
         <i className="i-mgc-book-6-cute-re" />
         <span>RSSHub Docs</span>
       </a>
     ),
+    schema: z.object({
+      keyword: z.string().url().startsWith("rsshub://"),
+    }),
   },
-}
+} satisfies Record<
+  string,
+  {
+    label: I18nKeys
+    prefix?: string[]
+    showModal?: boolean
+    default?: string
+    labelSuffix?: React.ReactNode
+    schema?: any
+  }
+>
 
-type DiscoverSearchData = Awaited<ReturnType<typeof apiClient.discover.$post>>["data"]
-
-const discoverSearchDataAtom = atom<Record<string, DiscoverSearchData>>()
+const discoverSearchDataAtom = atom<Record<string, DiscoveryItem[]>>()
 
 export function DiscoverForm({ type = "search" }: { type?: string }) {
-  const { prefix, default: defaultValue } = info[type]!
+  const {
+    prefix,
+    default: defaultValue,
+    schema: formSchema,
+    label,
+    labelSuffix,
+    showModal,
+  } = FEED_DISCOVERY_INFO[type]!
 
   const [searchParams, setSearchParams] = useSearchParams()
   const keywordFromSearch = searchParams.get("keyword") || ""
@@ -99,15 +111,17 @@ export function DiscoverForm({ type = "search" }: { type?: string }) {
       keyword: defaultValue || keywordFromSearch || "",
       target: "feeds",
     },
+    mode: "all",
   })
   const { watch, trigger } = form
+
   // validate default value from search params
   useEffect(() => {
     if (!keywordFromSearch) {
       return
     }
     trigger("keyword")
-  }, [trigger])
+  }, [trigger, keywordFromSearch])
 
   const target = watch("target")
   const atomKey = keywordFromSearch + target
@@ -117,11 +131,9 @@ export function DiscoverForm({ type = "search" }: { type?: string }) {
   const jotaiStore = useStore()
   const mutation = useMutation({
     mutationFn: async ({ keyword, target }: { keyword: string; target: "feeds" | "lists" }) => {
-      let { data } = await apiClient.discover.$post({
-        json: {
-          keyword: keyword.trim(),
-          target,
-        },
+      let { data } = await followClient.api.discover.discover({
+        keyword: keyword.trim(),
+        target,
       })
       if (isInMASReview) {
         data = data.filter((item) => !item.list?.fee)
@@ -141,7 +153,7 @@ export function DiscoverForm({ type = "search" }: { type?: string }) {
   const { present, dismissAll } = useModalStack()
 
   function onSubmit(values: z.infer<typeof formSchema>) {
-    if (info[type]!.showModal) {
+    if (FEED_DISCOVERY_INFO[type]!.showModal) {
       present({
         title: t("feed_form.add_feed"),
         content: () => <FeedForm url={values.keyword} onSuccess={dismissAll} />,
@@ -151,50 +163,72 @@ export function DiscoverForm({ type = "search" }: { type?: string }) {
     }
   }
 
-  const handleKeywordChange = useCallback(
-    (event: ChangeEvent<HTMLInputElement>) => {
-      const syncKeyword = (keyword: string) => {
-        setSearchParams(
-          (prev) => {
-            const newParams = new URLSearchParams(prev)
-            if (keyword) {
-              newParams.set("keyword", keyword)
-            } else {
-              newParams.delete("keyword")
-            }
-            return newParams
-          },
-          {
-            replace: true,
-          },
-        )
-      }
+  const normalizeAndSet = useCallback(
+    (rawValue: string) => {
+      startTransition(() => {
+        const trimmedKeyword = rawValue.trimStart()
+        if (!prefix) {
+          setValue(trimmedKeyword)
+          return
+        }
+        const isValidPrefix = prefix.find((p) => trimmedKeyword.startsWith(p))
+        if (!isValidPrefix) {
+          setValue(prefix[0]!)
+          return
+        }
+        if (trimmedKeyword.startsWith(`${isValidPrefix}${isValidPrefix}`)) {
+          setValue(trimmedKeyword.slice(isValidPrefix.length))
+          return
+        }
+        setValue(trimmedKeyword)
 
-      const trimmedKeyword = event.target.value.trimStart()
-      if (!prefix) {
-        form.setValue("keyword", trimmedKeyword, { shouldValidate: true })
-        syncKeyword(trimmedKeyword)
-        return
-      }
-      const isValidPrefix = prefix.find((p) => trimmedKeyword.startsWith(p))
-      if (!isValidPrefix) {
-        form.setValue("keyword", prefix[0]!)
-        syncKeyword(prefix[0]!)
-        return
-      }
-      if (trimmedKeyword.startsWith(`${isValidPrefix}${isValidPrefix}`)) {
-        form.setValue("keyword", trimmedKeyword.slice(isValidPrefix.length))
-        syncKeyword(trimmedKeyword.slice(isValidPrefix.length))
-        return
-      }
-      form.setValue("keyword", trimmedKeyword)
-      syncKeyword(trimmedKeyword)
+        function setValue(value: string) {
+          form.setValue("keyword", value, { shouldValidate: true })
+          syncKeyword(value)
+        }
+
+        function syncKeyword(keyword: string) {
+          setSearchParams(
+            (prev) => {
+              const newParams = new URLSearchParams(prev)
+              if (keyword) {
+                newParams.set("keyword", keyword)
+              } else {
+                newParams.delete("keyword")
+              }
+              return newParams
+            },
+            {
+              replace: true,
+            },
+          )
+        }
+      })
     },
     [form, prefix, setSearchParams],
   )
 
+  const handleKeywordChange = useCallback(
+    (event: ChangeEvent<HTMLInputElement>) => {
+      const { value } = event.currentTarget
+      // During composition, update raw value without normalization or syncing URL params
+      if ((event.nativeEvent as InputEvent)?.isComposing) {
+        form.setValue("keyword", value, { shouldValidate: false })
+        return
+      }
+      normalizeAndSet(value)
+    },
+    [form, normalizeAndSet],
+  )
+  const handleCompositionEnd = useCallback(
+    (event: CompositionEvent<HTMLInputElement>) => {
+      normalizeAndSet(event.currentTarget.value)
+    },
+    [normalizeAndSet],
+  )
+
   const handleSuccess = useCallback(
-    (item: DiscoverSearchData[number]) => {
+    (item: DiscoveryItem) => {
       const currentData = jotaiStore.get(discoverSearchDataAtom)
       if (!currentData) return
       jotaiStore.set(
@@ -214,11 +248,11 @@ export function DiscoverForm({ type = "search" }: { type?: string }) {
         }),
       )
     },
-    [discoverSearchDataAtom, jotaiStore],
+    [atomKey, jotaiStore],
   )
 
   const handleUnSubscribed = useCallback(
-    (item: DiscoverSearchData[number]) => {
+    (item: DiscoveryItem) => {
       const currentData = jotaiStore.get(discoverSearchDataAtom)
       if (!currentData) return
       jotaiStore.set(
@@ -234,7 +268,7 @@ export function DiscoverForm({ type = "search" }: { type?: string }) {
         }),
       )
     },
-    [discoverSearchDataAtom, jotaiStore],
+    [atomKey, jotaiStore],
   )
 
   const handleTargetChange = useCallback(
@@ -260,15 +294,16 @@ export function DiscoverForm({ type = "search" }: { type?: string }) {
               name="keyword"
               render={({ field }) => (
                 <FormItem className="mb-4">
-                  <FormLabel className="text-text text-headline mb-2 flex items-center gap-2 pl-2 font-bold">
-                    {t(info[type]?.label!)}
-                    {info[type]?.labelSuffix}
+                  <FormLabel className="mb-2 flex items-center gap-2 pl-2 text-headline font-bold text-text">
+                    {t(label)}
+                    {labelSuffix}
                   </FormLabel>
                   <FormControl>
                     <Input
                       autoFocus
                       {...field}
                       onChange={handleKeywordChange}
+                      onCompositionEnd={handleCompositionEnd}
                       placeholder={type === "search" ? "Enter URL or keyword..." : undefined}
                     />
                   </FormControl>
@@ -283,7 +318,7 @@ export function DiscoverForm({ type = "search" }: { type?: string }) {
                 render={({ field }) => (
                   <FormItem className="mb-4 pl-2">
                     <div className="mb-2 flex items-center justify-between">
-                      <FormLabel className="text-text-secondary text-headline font-medium">
+                      <FormLabel className="text-headline font-medium text-text-secondary">
                         {t("discover.target.label")}
                       </FormLabel>
                       <FormControl>
@@ -322,7 +357,7 @@ export function DiscoverForm({ type = "search" }: { type?: string }) {
                 type="submit"
                 isLoading={mutation.isPending}
               >
-                {info[type]!.showModal ? t("discover.preview") : t("words.search")}
+                {showModal ? t("discover.preview") : t("words.search")}
               </Button>
             </div>
           </div>
@@ -336,7 +371,7 @@ export function DiscoverForm({ type = "search" }: { type?: string }) {
 
             {discoverSearchData && discoverSearchData.length > 0 && (
               <MotionButtonBase
-                className="hover:text-accent cursor-button flex items-center justify-between gap-2"
+                className="flex cursor-button items-center justify-between gap-2 hover:text-accent"
                 type="button"
                 onClick={() => {
                   jotaiStore.set(discoverSearchDataAtom, {

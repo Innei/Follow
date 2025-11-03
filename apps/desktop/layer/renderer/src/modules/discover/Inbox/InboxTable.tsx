@@ -17,6 +17,15 @@ import { InboxSecret } from "./InboxSecret"
 export const InboxTable = () => {
   const { t } = useTranslation()
   const inboxes = useInboxList()
+  if (inboxes.length === 0)
+    return (
+      <div className="center mb-4 flex flex-col gap-2 text-sm text-text-secondary">
+        <i className="i-mingcute-empty-box-line text-3xl" />
+        <span className="center max-w-sm text-balance text-center text-sm text-text-secondary">
+          {t("discover.inbox.no_inbox")}
+        </span>
+      </div>
+    )
   return (
     <Table containerClassName="overflow-auto mb-8">
       <TableHeader>

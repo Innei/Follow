@@ -1,6 +1,8 @@
 import { EventBus } from "@follow/utils/event-bus"
 import { useTranslation } from "react-i18next"
 
+import { setAppSearchOpen } from "~/atoms/app"
+import { getAIPanelVisibility, setAIPanelVisibility } from "~/atoms/settings/ai"
 import { useShortcutsModal } from "~/modules/modal/hooks/useShortcutsModal"
 
 import { useRegisterCommandEffect } from "../hooks/use-register-command"
@@ -11,8 +13,6 @@ declare module "@follow/utils/event-bus" {
   interface EventBusMap {
     "global:toggle-corner-play": void
     "global:quick-add": void
-    "global:toggle-ai-chat": void
-    "global:toggle-ai-chat-pinned": void
   }
 }
 
@@ -21,9 +21,6 @@ export const useRegisterGlobalCommands = () => {
   const showShortcuts = useShortcutsModal()
   const { t } = useTranslation("shortcuts")
 
-  const aiIcon = (props?: { isActive?: boolean }) => {
-    return <i className={props?.isActive ? "i-mgc-comment-cute-fi" : "i-mgc-comment-cute-re"} />
-  }
   useRegisterCommandEffect([
     {
       id: COMMAND_ID.global.showShortcuts,
@@ -61,27 +58,28 @@ export const useRegisterGlobalCommands = () => {
     },
 
     {
+      id: COMMAND_ID.global.quickSearch,
+      label: {
+        title: t("command.global.quick_search.title"),
+        description: t("command.global.quick_search.description"),
+      },
+      run: () => {
+        setAppSearchOpen(true)
+      },
+      category,
+    },
+
+    {
       id: COMMAND_ID.global.toggleAIChat,
       label: {
         title: t("command.global.toggle_ai_chat.title"),
         description: t("command.global.toggle_ai_chat.description"),
       },
       run: () => {
-        EventBus.dispatch(COMMAND_ID.global.toggleAIChat)
+        const isVisible = getAIPanelVisibility()
+        setAIPanelVisibility(!isVisible)
       },
-      icon: aiIcon,
-      category,
-    },
-    {
-      id: COMMAND_ID.global.toggleAIChatPinned,
-      label: {
-        title: t("command.global.toggle_ai_chat_pinned.title"),
-        description: t("command.global.toggle_ai_chat_pinned.description"),
-      },
-      run: () => {
-        EventBus.dispatch(COMMAND_ID.global.toggleAIChatPinned)
-      },
-      icon: aiIcon,
+
       category,
     },
   ])
@@ -107,9 +105,9 @@ export type ToggleAIChatCommand = Command<{
   fn: (ctx?: { entryId?: string }) => void
 }>
 
-export type ToggleAIChatPinnedCommand = Command<{
-  id: typeof COMMAND_ID.global.toggleAIChatPinned
-  fn: (ctx?: { entryId?: string }) => void
+export type QuickSearchCommand = Command<{
+  id: typeof COMMAND_ID.global.quickSearch
+  fn: () => void
 }>
 
 export type GlobalCommand =
@@ -117,4 +115,4 @@ export type GlobalCommand =
   | ToggleCornerPlayCommand
   | QuickAddCommand
   | ToggleAIChatCommand
-  | ToggleAIChatPinnedCommand
+  | QuickSearchCommand

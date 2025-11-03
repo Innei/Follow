@@ -1,40 +1,98 @@
-import type { AccentColor } from "./interface"
+import type {
+  AccentColor,
+  AISettings,
+  GeneralSettings,
+  IntegrationSettings,
+  UISettings,
+} from "./interface"
 
-const ACCENT_COLOR_MAP: Record<AccentColor, { light: string; dark: string }> = {
+export enum SettingPaidLevels {
+  Free,
+  FreeLimited,
+  Plus,
+}
+
+type PartialRecord<K extends PropertyKey, V> = Partial<Record<K, V>>
+
+export const PAID_SETTINGS = {
+  general: {
+    summary: SettingPaidLevels.FreeLimited,
+    translation: SettingPaidLevels.Plus,
+    translationMode: SettingPaidLevels.Plus,
+    hidePrivateSubscriptionsInTimeline: SettingPaidLevels.Plus,
+  },
+  ui: {
+    hideExtraBadge: SettingPaidLevels.Plus,
+    hideRecentReader: SettingPaidLevels.Plus,
+  },
+  integration: {
+    enableCubox: SettingPaidLevels.Plus,
+    enableObsidian: SettingPaidLevels.Plus,
+    enableOutline: SettingPaidLevels.Plus,
+    enableReadwise: SettingPaidLevels.Plus,
+    enableZotero: SettingPaidLevels.Plus,
+    enableInstapaper: SettingPaidLevels.Plus,
+    enableReadeck: SettingPaidLevels.Plus,
+    enableEagle: SettingPaidLevels.Plus,
+    enableQBittorrent: SettingPaidLevels.Plus,
+    enableCustomIntegration: SettingPaidLevels.Plus,
+  },
+  ai: {},
+} as const satisfies {
+  general: PartialRecord<keyof GeneralSettings, SettingPaidLevels>
+  ui: PartialRecord<keyof UISettings, SettingPaidLevels>
+  integration: PartialRecord<keyof IntegrationSettings, SettingPaidLevels>
+  ai: PartialRecord<keyof AISettings, SettingPaidLevels>
+}
+
+export type SettingNamespace = keyof typeof PAID_SETTINGS
+
+export const getSettingPaidLevel = (namespace: string, key: string) => {
+  const group = PAID_SETTINGS[namespace as keyof typeof PAID_SETTINGS]
+  if (!group) return
+  return group[key as keyof typeof group]
+}
+
+const ACCENT_COLOR_MAP = {
   orange: {
     light: "#FF6B35",
     dark: "#FF5C00",
   },
   blue: {
-    light: "#0066FF", // Brighter blue while maintaining contrast with white text
-    dark: "#3B82F6", // Darker blue for dark theme
+    light: "#5CA9F2",
+    dark: "#2F78E8",
   },
   green: {
-    light: "#2DB84D", // Brighter green while maintaining contrast with white text
-    dark: "#22C55E", // Darker green for dark theme
+    light: "#4CD7A5",
+    dark: "#1FA97A",
   },
   purple: {
-    light: "#9F52C7", // Brighter purple while maintaining contrast with white text
-    dark: "#A855F7", // Darker purple for dark theme
+    light: "#B07BEF",
+    dark: "#8A3DCC",
   },
   pink: {
-    light: "#E62E85", // Brighter pink while maintaining contrast with white text
-    dark: "#EC4899", // Darker pink for dark theme
+    light: "#F266A8",
+    dark: "#C63C82",
   },
   red: {
-    light: "#DC3526", // Brighter red while maintaining contrast with white text
-    dark: "#EF4444", // Darker red for dark theme
+    light: "#E84A3C",
+    dark: "#C22E28",
   },
   yellow: {
-    light: "#E6A700", // Brighter yellow while maintaining contrast with white text
-    dark: "#EAB308", // Darker yellow for dark theme
+    light: "#F7B500",
+    dark: "#D99800",
   },
   gray: {
-    light: "#757580", // Brighter gray while maintaining contrast with white text
-    dark: "#94A3B8", // Darker gray for dark theme
+    light: "#8A96A3",
+    dark: "#5C6673",
   },
-}
+} satisfies Record<string, { light: string; dark: string }>
 
 export const getAccentColorValue = (color: AccentColor) => {
-  return ACCENT_COLOR_MAP[color]
+  // If it's a custom color (hex code), return it for both light and dark
+  if (color.startsWith("#")) {
+    return { light: color, dark: color }
+  }
+  const preset = ACCENT_COLOR_MAP[color as keyof typeof ACCENT_COLOR_MAP]
+  return preset || ACCENT_COLOR_MAP.orange
 }

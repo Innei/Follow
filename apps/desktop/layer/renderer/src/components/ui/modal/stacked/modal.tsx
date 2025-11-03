@@ -89,20 +89,30 @@ export const ModalInternal = memo(function Modal({
 
   const setStack = useSetAtom(modalStackAtom)
 
-  const [currentIsClosing, setCurrentIsClosing] = useState(false)
-  const { noticeModal, animateController, dismissing } = useModalAnimate(!!isTop)
+  // Animation controls
+  const { animateController, playNoticeAnimation, playExitAnimation, isClosing, readyToClose } =
+    useModalAnimate(!!isTop, item.id)
 
-  const close = useEventCallback((forceClose = false) => {
+  // Simple dismiss logic
+  const close = useEventCallback(async (forceClose = false) => {
     if (!canClose && !forceClose) return
-    setCurrentIsClosing(true)
-
-    if (!CustomModalComponent) {
-      dismissing().then(() => {
+    readyToClose()
+    try {
+      if (CustomModalComponent) {
+        // Custom modals handle their own animation
         setStack((p) => p.filter((modal) => modal.id !== item.id))
-      })
-    } else {
+      } else {
+        // Play exit animation then remove from stack\
+        await playExitAnimation()
+        setStack((p) => p.filter((modal) => modal.id !== item.id))
+      }
+    } catch (error) {
+      // If animation fails, still remove from stack
+      console.warn("Modal animation failed:", error)
       setStack((p) => p.filter((modal) => modal.id !== item.id))
     }
+
+    item.onClose?.()
     onPropsClose?.(false)
   })
 
@@ -120,7 +130,6 @@ export const ModalInternal = memo(function Modal({
   const dismiss = useCallback(
     (e: SyntheticEvent) => {
       e.stopPropagation()
-
       close(true)
     },
     [close],
@@ -186,11 +195,11 @@ export const ModalInternal = memo(function Modal({
   )
 
   useEffect(() => {
-    if (currentIsClosing) {
+    if (isClosing) {
       // Radix dialog will block pointer events
       document.body.style.pointerEvents = "auto"
     }
-  }, [currentIsClosing])
+  }, [isClosing])
 
   const modalStyle = resizeableStyle
   const { handleSelectStart, handleDetectSelectEnd, isSelectingRef } = useModalSelect()
@@ -198,10 +207,13 @@ export const ModalInternal = memo(function Modal({
     (e: SyntheticEvent) => {
       if (isSelectingRef.current) return
 
-      const fn = modal ? (clickOutsideToDismiss && canClose ? dismiss : noticeModal) : undefined
-      fn?.(e)
+      if (modal && clickOutsideToDismiss && canClose) {
+        dismiss(e)
+      } else if (modal) {
+        playNoticeAnimation()
+      }
     },
-    [canClose, clickOutsideToDismiss, dismiss, modal, noticeModal, isSelectingRef],
+    [canClose, clickOutsideToDismiss, dismiss, modal, playNoticeAnimation, isSelectingRef],
   )
 
   const openAutoFocus = useCallback(
@@ -230,9 +242,7 @@ export const ModalInternal = memo(function Modal({
     <ModalOverlay
       zIndex={currentModalZIndex - 1}
       blur={overlayOptions?.blur}
-      hidden={
-        item.overlay ? currentIsClosing : !(modalSettingOverlay && isBottom) || currentIsClosing
-      }
+      hidden={item.overlay ? isClosing : !(modalSettingOverlay && isBottom) || isClosing}
     />
   )
 
@@ -244,7 +254,6 @@ export const ModalInternal = memo(function Modal({
         <Dialog.Root open onOpenChange={onClose} modal={modal}>
           <Dialog.Portal>
             {Overlay}
-            <Dialog.DialogTitle className="sr-only">{title}</Dialog.DialogTitle>
             <Dialog.Content
               ref={setModalContentRef}
               asChild
@@ -258,7 +267,7 @@ export const ModalInternal = memo(function Modal({
                 className={cn(
                   "no-drag-region fixed",
                   modal ? "inset-0 overflow-auto" : "left-0 top-0",
-                  currentIsClosing ? "!pointer-events-none" : "!pointer-events-auto",
+                  isClosing ? "!pointer-events-none" : "!pointer-events-auto",
                   modalContainerClassName,
                 )}
                 style={{
@@ -269,6 +278,7 @@ export const ModalInternal = memo(function Modal({
                 onFocus={stopPropagation}
                 tabIndex={-1}
               >
+                <Dialog.DialogTitle className="sr-only">{title}</Dialog.DialogTitle>
                 {DragBar}
                 <div
                   className={cn("contents", modalClassName, modalContentClassName)}
@@ -311,7 +321,7 @@ export const ModalInternal = memo(function Modal({
               className={cn(
                 "fixed flex",
                 modal ? "inset-0 overflow-auto" : "left-0 top-0",
-                currentIsClosing && "!pointer-events-none",
+                isClosing && "!pointer-events-none",
                 modalContainerClassName,
                 !isResizeable && "center",
               )}
@@ -320,6 +330,7 @@ export const ModalInternal = memo(function Modal({
               onClick={handleClickOutsideToDismiss}
               style={{
                 zIndex: currentModalZIndex,
+                perspective: 1200,
               }}
               tabIndex={-1}
             >
@@ -331,12 +342,11 @@ export const ModalInternal = memo(function Modal({
                 {...modalMontionConfig}
                 animate={animateController}
                 className={cn(
-                  "relative flex flex-col overflow-hidden rounded-lg px-2 pt-2",
+                  "relative flex flex-col overflow-hidden rounded-xl px-2 pt-1",
                   "bg-background",
-                  "shadow-modal",
+                  "shadow-modal [transform-style:preserve-3d]",
                   max ? "h-[90vh] w-[90vw]" : "max-h-[90vh]",
-
-                  "border-border border",
+                  "border border-border",
                   modalClassName,
                 )}
                 tabIndex={-1}
@@ -361,32 +371,37 @@ export const ModalInternal = memo(function Modal({
                   defaultSize={resizeDefaultSize}
                   className="flex grow flex-col"
                 >
-                  <div className={"relative flex items-center"}>
-                    <Dialog.Title
-                      className="flex w-0 max-w-full grow items-center gap-2 px-2 py-1 text-lg font-semibold"
-                      onPointerDownCapture={handleDrag}
-                      onPointerDown={relocateModal}
-                    >
-                      {!!icon && <span className="center flex size-4">{icon}</span>}
-                      <EllipsisHorizontalTextWithTooltip className="truncate">
-                        <span>{title}</span>
-                      </EllipsisHorizontalTextWithTooltip>
-                    </Dialog.Title>
-                    {canClose && (
-                      <Dialog.DialogClose
-                        className="center hover:bg-material-ultra-thick z-[2] rounded-lg p-2"
-                        tabIndex={1}
-                        onClick={close}
+                  <div className={"relative z-10 flex flex-col bg-background"}>
+                    <div className={"flex items-center"}>
+                      <Dialog.Title
+                        className="flex w-0 max-w-full grow items-center gap-2 px-2 pb-1 pt-2 text-base font-medium text-text"
+                        onPointerDownCapture={handleDrag}
+                        onPointerDown={relocateModal}
                       >
-                        <i className="i-mgc-close-cute-re" />
-                      </Dialog.DialogClose>
+                        {!!icon && <span className="center flex size-4">{icon}</span>}
+                        <EllipsisHorizontalTextWithTooltip className="truncate">
+                          <span>{title}</span>
+                        </EllipsisHorizontalTextWithTooltip>
+                      </Dialog.Title>
+                      {canClose && (
+                        <Dialog.DialogClose
+                          className="center z-[2] -mr-1 rounded-lg p-2 text-text-secondary hover:bg-fill-quaternary hover:text-text"
+                          tabIndex={1}
+                          onClick={close}
+                        >
+                          <i className="i-mgc-close-cute-re" />
+                        </Dialog.DialogClose>
+                      )}
+                    </div>
+
+                    {(title || icon || canClose) && (
+                      <div className="mx-1 mt-1 h-px shrink-0 bg-border" />
                     )}
                   </div>
-                  <div className="bg-border mx-1 mt-2 h-px shrink-0" />
 
                   <div
                     className={cn(
-                      "-mx-2 min-h-0 shrink grow overflow-auto p-4",
+                      "-mx-2 min-h-0 shrink grow overflow-auto overflow-x-hidden px-4 pb-4 pt-3 text-sm text-text",
                       modalContentClassName,
                     )}
                   >

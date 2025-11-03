@@ -1,4 +1,8 @@
+import type { BizUIMessage } from "@folo-services/ai-tools"
+import { useShallow } from "zustand/shallow"
+
 import { useAIChatStore } from "./AIChatContext"
+import type { BlockSlice } from "./slices/block.slice"
 
 /**
  * Hook to get the current room ID (chat ID) from the AI chat store
@@ -14,28 +18,6 @@ export const useCurrentChatId = () => {
 export const useCurrentTitle = () => {
   const store = useAIChatStore()
   return store((state) => state.currentTitle)
-}
-
-/**
- * Hook to get the setter for current room ID
- */
-export const useSetCurrentChatId = () => {
-  const store = useAIChatStore()
-  return (chatId: string | null) => {
-    const actions = store.getState().chatActions
-    if (chatId && chatId !== actions.getCurrentChatId()) {
-      // If we need to switch to a different room, create a new chat
-      actions.newChat()
-    }
-  }
-}
-
-/**
- * Hook to get the setter for current title
- */
-export const useSetCurrentTitle = () => {
-  const store = useAIChatStore()
-  return store.getState().chatActions.setCurrentTitle
 }
 
 /**
@@ -55,19 +37,24 @@ export const useBlockActions = () => {
 }
 
 /**
- * Hook to get the chat instance
- */
-export const useChatInstance = () => {
-  const store = useAIChatStore()
-  return store((state) => state.chatInstance)
-}
-
-/**
  * Hook to get the current messages
  */
 export const useMessages = () => {
   const store = useAIChatStore()
   return store((state) => state.messages)
+}
+
+export const useMessageByIdSelector = <T>(
+  messageId: string,
+  selector: (message: BizUIMessage) => T,
+): T | undefined => {
+  const store = useAIChatStore()
+  return store(
+    useShallow((state) => {
+      const message = state.messages.find((message) => message.id === messageId)
+      return message ? selector(message) : undefined
+    }),
+  )
 }
 
 /**
@@ -76,6 +63,21 @@ export const useMessages = () => {
 export const useHasMessages = () => {
   const store = useAIChatStore()
   return store((state) => state.messages.length > 0)
+}
+
+export const useIsLocalChat = () => {
+  const store = useAIChatStore()
+  return store((state) => state.isLocal)
+}
+
+export const useSyncStatus = () => {
+  const store = useAIChatStore()
+  return store((state) => state.syncStatus)
+}
+
+export const useSyncStateActions = () => {
+  const store = useAIChatStore()
+  return store((state) => state.chatActions)
 }
 
 export const useChatBlockActions = () => useAIChatStore()((state) => state.blockActions)
@@ -96,9 +98,14 @@ export const useChatError = () => {
 }
 
 /**
- * Hook to get the streaming status
+ * Hook to get the chat scene
  */
-export const useIsStreaming = () => {
+export const useChatScene = () => {
   const store = useAIChatStore()
-  return store((state) => state.isStreaming)
+  return store((state) => state.scene)
+}
+
+export const useChatBlockSelector = <T>(selector: (state: Pick<BlockSlice, "blocks">) => T) => {
+  const store = useAIChatStore()
+  return store(useShallow((state) => selector(state)))
 }

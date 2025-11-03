@@ -70,26 +70,6 @@
       ]
     },
     {
-      "source": "/terms",
-      "destination": "https://follow-external-ssr-follow.vercel.app/terms",
-      "has": [
-        {
-          "type": "host",
-          "value": "app.follow.is"
-        }
-      ]
-    },
-    {
-      "source": "/privacy-policy",
-      "destination": "https://follow-external-ssr-follow.vercel.app/privacy-policy",
-      "has": [
-        {
-          "type": "host",
-          "value": "app.follow.is"
-        }
-      ]
-    },
-    {
       "source": "/external-dist/:path*",
       "destination": "https://follow-external-ssr-follow.vercel.app/external-dist/:path*",
       "has": [
@@ -170,26 +150,6 @@
       ]
     },
     {
-      "source": "/terms",
-      "destination": "https://follow-external-ssr.vercel.app/terms",
-      "has": [
-        {
-          "type": "host",
-          "value": "app.folo.is"
-        }
-      ]
-    },
-    {
-      "source": "/privacy-policy",
-      "destination": "https://follow-external-ssr.vercel.app/privacy-policy",
-      "has": [
-        {
-          "type": "host",
-          "value": "app.folo.is"
-        }
-      ]
-    },
-    {
       "source": "/external-dist/:path*",
       "destination": "https://follow-external-ssr.vercel.app/external-dist/:path*",
       "has": [
@@ -215,7 +175,7 @@
       "has": [
         {
           "type": "host",
-          "value": "dev.follow.is"
+          "value": "dev.folo.is"
         }
       ]
     },
@@ -225,7 +185,7 @@
       "has": [
         {
           "type": "host",
-          "value": "dev.follow.is"
+          "value": "dev.folo.is"
         }
       ]
     },
@@ -235,7 +195,7 @@
       "has": [
         {
           "type": "host",
-          "value": "dev.follow.is"
+          "value": "dev.folo.is"
         }
       ]
     },
@@ -245,7 +205,7 @@
       "has": [
         {
           "type": "host",
-          "value": "dev.follow.is"
+          "value": "dev.folo.is"
         }
       ]
     },
@@ -255,7 +215,7 @@
       "has": [
         {
           "type": "host",
-          "value": "dev.follow.is"
+          "value": "dev.folo.is"
         }
       ]
     },
@@ -265,7 +225,7 @@
       "has": [
         {
           "type": "host",
-          "value": "dev.follow.is"
+          "value": "dev.folo.is"
         }
       ]
     },
@@ -275,7 +235,7 @@
       "has": [
         {
           "type": "host",
-          "value": "dev.follow.is"
+          "value": "dev.folo.is"
         }
       ]
     },
@@ -285,7 +245,7 @@
       "has": [
         {
           "type": "host",
-          "value": "dev.follow.is"
+          "value": "dev.folo.is"
         }
       ]
     },
@@ -295,7 +255,7 @@
       "has": [
         {
           "type": "host",
-          "value": "staging.follow.is"
+          "value": "staging.folo.is"
         }
       ]
     },
@@ -305,7 +265,7 @@
       "has": [
         {
           "type": "host",
-          "value": "staging.follow.is"
+          "value": "staging.folo.is"
         }
       ]
     },
@@ -315,7 +275,7 @@
       "has": [
         {
           "type": "host",
-          "value": "staging.follow.is"
+          "value": "staging.folo.is"
         }
       ]
     },
@@ -325,7 +285,7 @@
       "has": [
         {
           "type": "host",
-          "value": "staging.follow.is"
+          "value": "staging.folo.is"
         }
       ]
     },
@@ -335,7 +295,7 @@
       "has": [
         {
           "type": "host",
-          "value": "staging.follow.is"
+          "value": "staging.folo.is"
         }
       ]
     },
@@ -345,7 +305,7 @@
       "has": [
         {
           "type": "host",
-          "value": "staging.follow.is"
+          "value": "staging.folo.is"
         }
       ]
     },
@@ -355,7 +315,7 @@
       "has": [
         {
           "type": "host",
-          "value": "staging.follow.is"
+          "value": "staging.folo.is"
         }
       ]
     },
@@ -365,7 +325,7 @@
       "has": [
         {
           "type": "host",
-          "value": "staging.follow.is"
+          "value": "staging.folo.is"
         }
       ]
     },

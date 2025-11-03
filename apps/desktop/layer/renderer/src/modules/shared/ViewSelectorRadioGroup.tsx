@@ -1,9 +1,12 @@
 import { Card, CardContent, CardHeader } from "@follow/components/ui/card/index.jsx"
-import { FeedViewType, views } from "@follow/constants"
-import type { EntryModelSimple, FeedModel } from "@follow/models"
+import { FeedViewType, getView } from "@follow/constants"
+import type { FeedModel } from "@follow/store/feed/types"
 import { cn } from "@follow/utils/utils"
-import { cloneElement } from "react"
+import type { ParsedEntry } from "@follow-app/client-sdk"
+import { cloneElement, useMemo } from "react"
 
+import { parseView } from "~/hooks/biz/useRouteParams"
+import { useTimelineList } from "~/hooks/biz/useTimelineList"
 import { useI18n } from "~/hooks/common"
 
 import { EntryItemSkeleton } from "../entry-column/EntryItemSkeleton"
@@ -17,7 +20,7 @@ export const ViewSelectorRadioGroup = ({
   className,
   ...rest
 }: {
-  entries?: EntryModelSimple[]
+  entries?: ParsedEntry[]
   feed?: FeedModel
   view?: number
 } & React.InputHTMLAttributes<HTMLInputElement> & {
@@ -25,13 +28,22 @@ export const ViewSelectorRadioGroup = ({
   }) => {
   const t = useI18n()
 
+  const timelineViewIds = useTimelineList({ withAll: false, visible: true })
+  const configuredViews = useMemo(() => {
+    return timelineViewIds
+      .map((timelineId) => parseView(timelineId))
+      .filter((viewType): viewType is FeedViewType => viewType !== undefined)
+      .map((viewType) => getView(viewType))
+      .filter((view) => view.switchable)
+  }, [timelineViewIds])
+
   const showPreview = feed && entries && entries.length > 0
   const showLoading = !!feed && !showPreview
 
   return (
     <Card className={rest.disabled ? "pointer-events-none" : void 0}>
-      <CardHeader className={cn("grid grid-cols-6 space-y-0 px-2 py-3", className)}>
-        {views.map((view) => (
+      <CardHeader className={cn("flex flex-row justify-around space-y-0 px-2 py-3", className)}>
+        {configuredViews.map((view) => (
           <div key={view.name}>
             <input
               className="peer hidden"
@@ -63,8 +75,14 @@ export const ViewSelectorRadioGroup = ({
         ))}
       </CardHeader>
       {showPreview && (
-        <CardContent className="relative flex w-full flex-col gap-2">
-          {entries.slice(0, 2).map((entry) => (
+        <CardContent
+          className={
+            getView(view || FeedViewType.Articles)?.gridMode
+              ? "relative grid w-full grid-cols-3 flex-col gap-2 pb-4"
+              : "relative flex w-full flex-col gap-2 pb-0"
+          }
+        >
+          {entries.slice(0, 3).map((entry) => (
             <EntryItemStateless entry={entry} feed={feed} view={view} key={entry.guid} />
           ))}
         </CardContent>

@@ -1,24 +1,55 @@
 import { getReadonlyRoute } from "@follow/components/atoms/route.js"
 import { useGlobalFocusableHasScope } from "@follow/components/common/Focusable/hooks.js"
-import { MotionButtonBase } from "@follow/components/ui/button/index.js"
 import { RootPortal } from "@follow/components/ui/portal/index.js"
+import { LinearBlur } from "@follow/components/ui/progressive-blur/index.js"
 import { ScrollArea } from "@follow/components/ui/scroll-area/index.js"
 import { Routes } from "@follow/constants"
 import { ELECTRON_BUILD } from "@follow/shared/constants"
 import { springScrollTo } from "@follow/utils/scroller"
-import { cn, getOS } from "@follow/utils/utils"
+import { clsx, cn, getOS } from "@follow/utils/utils"
 import { m } from "framer-motion"
-import { useCallback, useEffect, useRef, useState } from "react"
+import { isValidElement, useCallback, useEffect, useRef, useState } from "react"
 import { useHotkeys } from "react-hotkeys-hook"
 import { useTranslation } from "react-i18next"
 import { NavigationType, Outlet, useLocation, useNavigate, useNavigationType } from "react-router"
 import { parseQuery } from "ufo"
 
 import { Focusable } from "~/components/common/Focusable"
+import { GlassButton } from "~/components/ui/button/GlassButton"
+import { HeaderActionButton, HeaderActionGroup } from "~/components/ui/button/HeaderActionButton"
 import { HotkeyScope } from "~/constants"
 
 import { useSubViewRightView, useSubViewTitleValue } from "./hooks"
 
+/**
+ * SubviewLayout Component
+ *
+ * A full-screen modal-style layout for subview pages like Discover, AI, etc.
+ * This layout provides:
+ * - Fullscreen overlay with enhanced header controls
+ * - Smooth scroll behavior with progress indicators
+ * - Progressive mask blur effects
+ * - Back navigation with ESC key support
+ * - Dynamic title display based on scroll position
+ * - Configurable right-side action buttons
+ *
+ * Layout Structure:
+ * ```
+ * SubviewLayout
+ * ├── Fixed Header (progressive mask blur)
+ * │   ├── Back Button (left)
+ * │   ├── Title (center, fade in on scroll)
+ * │   └── Action Buttons (right, configurable)
+ * ├── Scrollable Content Area
+ * │   └── Outlet (renders subview pages)
+ * └── Progress FAB (bottom-right, scroll to top)
+ * ```
+ *
+ * @component
+ * @example
+ * // Used for routes like /discover, /power, /action, /rsshub
+ * // Provides full-screen modal-like experience
+ */
 export function SubviewLayout() {
   return (
     <Focusable className="contents" scope={HotkeyScope.SubLayer}>
@@ -27,6 +58,19 @@ export function SubviewLayout() {
   )
 }
 
+/**
+ * SubviewLayoutInner Component
+ *
+ * The inner implementation of SubviewLayout that handles:
+ * - Scroll state management and progress tracking
+ * - Header elevation and transparency effects
+ * - Navigation history and ESC key handling
+ * - Dynamic title visibility based on scroll position
+ * - Smooth scroll animations and auto-scroll behavior
+ *
+ * @component
+ * @internal
+ */
 function SubviewLayoutInner() {
   const navigate = useNavigate()
   const prevLocation = useRef(getReadonlyRoute().location).current
@@ -78,7 +122,7 @@ function SubviewLayoutInner() {
     ) {
       springScrollTo(0, scrollRef)
     }
-  }, [location.pathname, discoverType, scrollRef])
+  }, [location.pathname, discoverType, scrollRef, navigationType])
 
   useEffect(() => {
     const $scroll = scrollRef
@@ -117,55 +161,43 @@ function SubviewLayoutInner() {
       {/* Enhanced Header with smooth transitions */}
       <div
         className={cn(
-          "absolute inset-x-0 top-0 z-10 transition-all duration-300 ease-out",
+          "absolute inset-x-0 top-0 z-10 overflow-hidden transition-all duration-300 ease-out",
           isHeaderElevated && isElectronWindows && "-top-5",
         )}
       >
-        <m.div
-          className={cn(
-            "mx-4 mt-4 rounded-xl border border-transparent px-4 py-3",
-            "relative flex items-center",
-            "transition-all duration-300 ease-out",
-            isHeaderElevated && [
-              "border-border/50 bg-background/80 shadow-sm backdrop-blur-xl",
-              "supports-[backdrop-filter]:bg-background/60",
-            ],
-          )}
-        >
-          {/* Enhanced Back Button - positioned on the left */}
-          <m.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }} className="shrink-0">
-            <MotionButtonBase
-              onClick={backHandler}
-              className={cn(
-                "no-drag-region group relative flex items-center gap-2 rounded-lg px-3 py-2",
-                "text-sm font-medium transition-all duration-200",
-                "hover:bg-fill/50 hover:text-text",
-                "active:bg-fill/70",
-              )}
-            >
-              <i className="i-mingcute-left-line text-base transition-transform duration-200 group-hover:-translate-x-0.5" />
-              <span>{t("words.back", { ns: "common" })}</span>
-            </MotionButtonBase>
-          </m.div>
+        <m.div className={cn("flex items-center gap-3 p-4", "relative")}>
+          <LinearBlur className="absolute inset-0 z-[-1]" tint="var(--fo-background)" side="top" />
+          {/* Left: Back button (circular, glass) */}
+          <GlassButton
+            description={t("words.back", { ns: "common" })}
+            onClick={backHandler}
+            className={cn(
+              "no-drag-region shrink-0",
+              isHeaderElevated ? "opacity-100" : "opacity-80",
+            )}
+            size="md"
+          >
+            <i className="i-mingcute-left-line" />
+          </GlassButton>
 
-          {/* Enhanced Title - absolutely centered */}
-          <div className="pointer-events-none absolute inset-x-0 flex justify-center">
-            {isTitleVisible && title ? (
-              <div className="text-center">
-                <div className="text-text truncate font-semibold">{title}</div>
+          {/* Center: Content area block (rounded, glass) */}
+          <div className="pointer-events-none flex min-h-10 flex-1 items-center justify-center">
+            {title ? (
+              <div
+                className={clsx(
+                  "pointer-events-auto inline-flex max-w-[60%] items-center justify-center",
+                  "px-8 py-2 text-center duration-200",
+                  isTitleVisible ? "opacity-100" : "opacity-0",
+                )}
+              >
+                <div className="truncate font-semibold text-text">{title}</div>
               </div>
             ) : null}
           </div>
 
-          {/* Action Area - positioned on the right */}
-          <div
-            className={cn(
-              "ml-auto flex shrink-0 items-center gap-2 opacity-0 duration-200",
-              isHeaderElevated && "opacity-100",
-            )}
-          >
-            <SubViewHeaderRightView />
-          </div>
+          {/* Right: Button group block (rounded, glass) */}
+
+          <SubViewHeaderRightView isHeaderElevated={isHeaderElevated} />
         </m.div>
       </div>
 
@@ -188,9 +220,66 @@ function SubviewLayoutInner() {
   )
 }
 
-const SubViewHeaderRightView = () => {
+const SubViewHeaderRightView = ({ isHeaderElevated }: { isHeaderElevated: boolean }) => {
   const rightView = useSubViewRightView()
-  return <div className="inline-flex items-center">{rightView}</div>
+
+  if (!rightView) return null
+
+  if (isValidElement(rightView) && (rightView as any).type === HeaderActionGroup) {
+    const groupChildren = (rightView as any).props?.children
+    const childrenArray = Array.isArray(groupChildren) ? groupChildren : [groupChildren]
+
+    const items = childrenArray
+      .map((child: any) => {
+        if (isValidElement(child) && (child as any).type === HeaderActionButton) {
+          const { onClick, disabled, loading, icon, children: label } = (child as any).props
+          const key = (child as any).key ?? icon ?? (typeof label === "string" ? label : undefined)
+
+          return (
+            <GlassButton
+              key={key}
+              description={typeof label === "string" ? label : undefined}
+              onClick={() => {
+                if (!disabled && !loading) onClick?.()
+              }}
+              className={cn(disabled || loading ? "cursor-not-allowed opacity-50" : "")}
+              size="md"
+              theme="auto"
+            >
+              <i className={cn(icon || (loading ? "i-mgc-loading-3-cute-re animate-spin" : ""))} />
+            </GlassButton>
+          )
+        }
+        return null
+      })
+      .filter(Boolean)
+
+    return (
+      <div
+        className={cn(
+          "-mt-2 inline-flex items-center gap-1.5 rounded-full bg-fill p-2 backdrop-blur-background duration-200",
+          "has-[:nth-child(1)]:bg-transparent",
+          !isHeaderElevated && items.length > 1 ? "bg-material-ultra-thin" : "bg-material-medium",
+        )}
+      >
+        {items}
+      </div>
+    )
+  }
+
+  return (
+    <div
+      className={cn(
+        "ml-auto inline-flex shrink-0 items-center gap-1.5 rounded-xl border p-1.5",
+        "opacity-0 duration-200",
+        isHeaderElevated
+          ? "border-border/50 bg-material-ultra-thin opacity-100 shadow-sm backdrop-blur-xl"
+          : "border-transparent bg-material-medium",
+      )}
+    >
+      <div className="inline-flex items-center">{rightView}</div>
+    </div>
+  )
 }
 
 const ScrollProgressFAB = ({
@@ -236,7 +325,7 @@ const ScrollProgressFAB = ({
           />
         </svg>
         <div className="absolute inset-0 flex items-center justify-center opacity-100 transition-opacity duration-200 group-hover/fab:opacity-0">
-          <span className="text-text-secondary text-xs font-medium">{Math.round(progress)}</span>
+          <span className="text-xs font-medium text-text-secondary">{Math.round(progress)}</span>
         </div>
         <button
           onClick={() => {
@@ -245,7 +334,7 @@ const ScrollProgressFAB = ({
           type="button"
           className="absolute inset-0 flex items-center justify-center opacity-0 transition-opacity duration-200 group-hover/fab:opacity-100"
         >
-          <i className="i-mingcute-arow-to-up-line" />
+          <i className="i-mingcute-arrow-to-up-line" />
         </button>
       </div>
     </div>

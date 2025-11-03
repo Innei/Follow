@@ -46,6 +46,11 @@ export default extendConfig({
 
       height: {
         screen: "100svh",
+        // button height 2rem (size-8) + sidebar padding top 0.625rem (pt-2.5) x 2
+        // 2 + 0.625 * 2 = 3.25
+        "top-header": "3.25rem",
+        "top-header-with-border-b": "calc(3.25rem + 1px)",
+        "top-header-in-preview-with-border-b": "calc(3.25rem + 41px)",
       },
       colors: {
         sidebar: "hsl(var(--fo-sidebar) / <alpha-value>)",
@@ -101,12 +106,14 @@ export default extendConfig({
       addVariant("group-motion-reduce", ':merge(.group)[data-motion-reduce="true"] &')
       addVariant("peer-motion-reduce", ':merge(.peer)[data-motion-reduce="true"] ~ &')
 
-      addVariant("zen-mode-macos", ":where(html[data-zen-mode='true'][data-os='macOS']) &")
-      addVariant("zen-mode-windows", ":where(html[data-zen-mode='true'][data-os='Windows']) &")
+      addVariant("left-column-hidden", "html[data-left-column-hidden='true'] &")
+      addVariant(
+        "macos-left-column-hidden",
+        "html[data-os='macOS'][data-left-column-hidden='true'] &",
+      )
 
-      addVariant("zen-mode", ":where(html[data-zen-mode='true']) &")
-      addVariant("macos", ":where(html[data-os='macOS']) &")
-      addVariant("windows", ":where(html[data-os='Windows']) &")
+      addVariant("macos", "html[data-os='macOS'] &")
+      addVariant("windows", "html[data-os='Windows'] &")
     }),
     require("tailwindcss-multi"),
     require("tailwindcss-content-visibility"),

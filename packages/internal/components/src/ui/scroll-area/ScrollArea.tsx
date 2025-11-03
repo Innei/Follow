@@ -1,4 +1,3 @@
-import { stopPropagation } from "@follow/utils/dom"
 import { cn } from "@follow/utils/utils"
 import * as ScrollAreaBase from "@radix-ui/react-scroll-area"
 import * as React from "react"
@@ -152,11 +151,13 @@ export const ScrollArea = ({
   asChild = false,
   onUpdateMaxScroll,
   focusable = true,
-  stopWheelPropagation = true,
+  scrollbarProps,
+  viewportProps,
 }: React.PropsWithChildren & {
   rootClassName?: string
   viewportClassName?: string
   scrollbarClassName?: string
+  scrollbarProps?: React.ComponentProps<typeof ScrollAreaBase.Scrollbar>
   flex?: boolean
   mask?: boolean
   onScroll?: (e: React.UIEvent<HTMLDivElement>) => void
@@ -164,7 +165,7 @@ export const ScrollArea = ({
   orientation?: "vertical" | "horizontal"
   asChild?: boolean
   focusable?: boolean
-  stopWheelPropagation?: boolean
+  viewportProps?: React.ComponentProps<typeof ScrollAreaBase.Viewport>
 } & { ref?: React.Ref<HTMLDivElement | null> }) => {
   const [viewportRef, setViewportRef] = React.useState<HTMLDivElement | null>(null)
   React.useImperativeHandle(ref, () => viewportRef as HTMLDivElement)
@@ -177,7 +178,6 @@ export const ScrollArea = ({
         <Root className={rootClassName} flex={flex}>
           <Viewport
             ref={setViewportRef}
-            onWheel={stopWheelPropagation ? stopPropagation : undefined}
             className={cn(
               flex && "[&>div]:!flex [&>div]:!min-h-0 [&>div]:!flex-col", // Add min-h-0 to flex children
               viewportClassName,
@@ -186,10 +186,11 @@ export const ScrollArea = ({
             asChild={asChild}
             onScroll={onScroll}
             focusable={focusable}
+            {...viewportProps}
           >
             {children}
           </Viewport>
-          <Scrollbar orientation={orientation} className={scrollbarClassName} />
+          <Scrollbar orientation={orientation} className={scrollbarClassName} {...scrollbarProps} />
         </Root>
       </ScrollElementEventsContext>
     </ScrollElementContext>

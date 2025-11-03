@@ -7,7 +7,6 @@ export enum Routes {
 export enum UserRole {
   Admin = "admin",
   PreProTrial = "pre_pro_trial",
-  PrePro = "pre_pro",
   Free = "free",
   /**
    * @deprecated
@@ -16,12 +15,12 @@ export enum UserRole {
   // TODO: remove this
   Trial = "trial",
   Pro = "pro",
+  Plus = "plus",
 }
 
 export const UserRoleName: Record<UserRole, string> = {
   [UserRole.Admin]: "Admin",
   [UserRole.PreProTrial]: "Pro Preview Trial",
-  [UserRole.PrePro]: "Pro Preview",
   [UserRole.Free]: "Free",
   /**
    * @deprecated
@@ -29,4 +28,5 @@ export const UserRoleName: Record<UserRole, string> = {
    */
   [UserRole.Trial]: "Free",
   [UserRole.Pro]: "Pro",
+  [UserRole.Plus]: "Plus",
 } as const

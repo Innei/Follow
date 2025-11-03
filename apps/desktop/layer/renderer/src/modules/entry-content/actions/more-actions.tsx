@@ -26,13 +26,15 @@ import type { FollowCommandId } from "~/modules/command/types"
 export const MoreActions = ({
   entryId,
   view,
-  compact,
+  showMainAction = false,
+  hideCustomizeToolbar = false,
 }: {
   entryId: string
   view: FeedViewType
-  compact?: boolean
+  showMainAction?: boolean
+  hideCustomizeToolbar?: boolean
 }) => {
-  const { moreAction } = useSortedEntryActions({ entryId, view })
+  const { moreAction, mainAction } = useSortedEntryActions({ entryId, view })
 
   const actionConfigs = useMemo(
     () =>
@@ -56,14 +58,17 @@ export const MoreActions = ({
 
   const runCmdFn = useRunCommandFn()
   const extraAction: EntryActionMenuItem[] = useMemo(
-    () => [
-      new EntryActionMenuItem({
-        id: COMMAND_ID.settings.customizeToolbar,
-        onClick: runCmdFn(COMMAND_ID.settings.customizeToolbar, []),
-        entryId,
-      }),
-    ],
-    [entryId, runCmdFn],
+    () =>
+      !hideCustomizeToolbar
+        ? [
+            new EntryActionMenuItem({
+              id: COMMAND_ID.settings.customizeToolbar,
+              onClick: runCmdFn(COMMAND_ID.settings.customizeToolbar, []),
+              entryId,
+            }),
+          ]
+        : [],
+    [entryId, hideCustomizeToolbar, runCmdFn],
   )
 
   if (availableActions.length === 0 && extraAction.length === 0) {
@@ -73,13 +78,28 @@ export const MoreActions = ({
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
-        <ActionButton
-          icon={<i className="i-mgc-more-1-cute-re" />}
-          size={compact ? "xs" : "base"}
-        />
+        <ActionButton icon={<i className="i-mingcute-more-1-fill" />} />
       </DropdownMenuTrigger>
       <RootPortal>
-        <DropdownMenuContent>
+        <DropdownMenuContent align="end">
+          {showMainAction && (
+            <div>
+              {mainAction
+                .filter((config) => config instanceof MenuItemText)
+                .map((config) => {
+                  return (
+                    <CommandDropdownMenuItem
+                      key={config.id}
+                      commandId={config.id}
+                      onClick={config.onClick!}
+                      active={config.active}
+                    />
+                  )
+                })}
+              <DropdownMenuSeparator />
+            </div>
+          )}
+
           {availableActions.map((config) => {
             // Handle EntryActionI with sub-menu
             if (config instanceof EntryActionDropdownItem && config.hasChildren) {
@@ -121,7 +141,7 @@ export const MoreActions = ({
 
             return null
           })}
-          {availableActions.length > 0 && <DropdownMenuSeparator />}
+          {availableActions.length > 0 && extraAction.length > 0 && <DropdownMenuSeparator />}
           {extraAction
             .filter((item) => item instanceof MenuItemText)
             .map((config) => (

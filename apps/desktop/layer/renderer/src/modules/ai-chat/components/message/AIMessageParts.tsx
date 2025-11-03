@@ -1,145 +1,173 @@
 import "@xyflow/react/dist/style.css"
 
-import type { ToolUIPart } from "ai"
-import type { SerializedEditorState } from "lexical"
-import { m } from "motion/react"
+import { alwaysFalse } from "@follow/utils"
+import { ErrorBoundary } from "@sentry/react"
+import type { ReasoningUIPart, TextUIPart, ToolUIPart } from "ai"
 import * as React from "react"
 
-import type {
-  AIChatContextBlock,
-  AIDisplayAnalyticsTool,
-  AIDisplayEntriesTool,
-  AIDisplayFeedsTool,
-  AIDisplayFlowTool,
-  AIDisplaySubscriptionsTool,
-  BizUIMessage,
-} from "~/modules/ai-chat/store/types"
+import type { AIDisplayFlowTool, BizUIMessage, BizUITools } from "~/modules/ai-chat/store/types"
 
-import {
-  AIDisplayAnalyticsPart,
-  AIDisplayEntriesPart,
-  AIDisplayFeedsPart,
-  AIDisplaySubscriptionsPart,
-} from "../displays"
-// import { AIDisplayFlowPart } from "../displays/AIDisplayFlowPart"
-import { AIDataBlockPart } from "./AIDataBlockPart"
-import { AIMarkdownMessage, AIMarkdownStreamingMessage } from "./AIMarkdownMessage"
-import { AIRichTextMessage } from "./AIRichTextMessage"
+import { useChatStatus } from "../../store/hooks"
+import { AIChainOfThought } from "../displays"
+import type { ChainReasoningPart } from "../displays/AIChainOfThought"
+import { AIMarkdownStreamingMessage } from "./AIMarkdownMessage"
+import { SaveMemoryCard } from "./SaveMemoryCard"
 import { ToolInvocationComponent } from "./ToolInvocationComponent"
 
 const LazyAIDisplayFlowPart = React.lazy(() =>
   import("../displays/AIDisplayFlowPart").then((mod) => ({ default: mod.AIDisplayFlowPart })),
 )
 
-interface MessagePartsProps {
+interface AIMessagePartsProps {
   message: BizUIMessage
-}
-const ThinkingIndicator: React.FC = () => {
-  return (
-    <div className="flex w-24 items-center">
-      <m.div
-        initial={{ opacity: 0, y: 10 }}
-        animate={{ opacity: 1, y: 0 }}
-        className="relative inline-block"
-      >
-        <span className="from-text-tertiary via-text to-text-tertiary animate-[shimmer_5s_linear_infinite] bg-gradient-to-r bg-[length:200%_100%] bg-clip-text text-sm font-medium text-transparent">
-          Thinking...
-        </span>
-      </m.div>
-    </div>
-  )
+  isLastMessage: boolean
 }
 
-export const AIMessageParts: React.FC<MessagePartsProps> = React.memo(({ message }) => {
-  if (!message.parts || message.parts.length === 0) {
-    // In AI SDK v5, messages should always have parts
-    if (message.role === "assistant") {
-      return <ThinkingIndicator />
-    }
-    return null
-  }
-  const isUser = message.role === "user"
+export const AIMessageParts: React.FC<AIMessagePartsProps> = React.memo(
+  ({ message, isLastMessage }) => {
+    // const [shouldStreamingAnimation, setShouldStreamingAnimation] = React.useState(false)
+    const chatStatus = useChatStatus()
 
-  return message.parts.map((part, index) => {
-    const partKey = `${message.id}-${index}`
+    // React.useEffect(() => {
+    // I forgot why do this
+    //   // Delay 2s to set shouldStreamingAnimation
+    //   const timerId = setTimeout(() => {
+    //     setShouldStreamingAnimation(true)
+    //   }, 2000)
+    //   return () => clearTimeout(timerId)
+    // }, [])
 
-    switch (part.type) {
-      case "text": {
-        if (message.role === "assistant")
-          return (
-            <AIMarkdownStreamingMessage
-              isProcessing={message.metadata?.totalTokens === undefined}
-              key={partKey}
-              text={part.text}
-              className={"text-text"}
-            />
-          )
-        return <AIMarkdownMessage key={partKey} text={part.text} className={"text-white"} />
-      }
+    const shouldMessageAnimation = React.useMemo(() => {
+      return chatStatus === "streaming" && isLastMessage // && shouldStreamingAnimation
+    }, [chatStatus, isLastMessage])
 
-      case "data-block": {
-        return <AIDataBlockPart key={partKey} blocks={part.data as AIChatContextBlock[]} />
-      }
+    const chainThoughtParts = React.useMemo(() => {
+      const parts = [] as (ChainReasoningPart[] | TextUIPart | ToolUIPart<BizUITools>)[]
 
-      case "data-rich-text": {
-        return (
-          <AIRichTextMessage
-            key={partKey}
-            data={part.data as { state: SerializedEditorState; text: string }}
-            className={isUser ? "text-white" : "text-text"}
-          />
-        )
-      }
+      const shouldBypass = (name: string) =>
+        name.startsWith("tool-save_user_memory") || name.startsWith("tool-display")
 
-      case "tool-displayAnalytics": {
-        return <AIDisplayAnalyticsPart key={partKey} part={part as AIDisplayAnalyticsTool} />
-      }
-      case "tool-displayEntries": {
-        return <AIDisplayEntriesPart key={partKey} part={part as AIDisplayEntriesTool} />
-      }
-      case "tool-displaySubscriptions": {
-        return (
-          <AIDisplaySubscriptionsPart key={partKey} part={part as AIDisplaySubscriptionsTool} />
-        )
-      }
-      case "tool-displayFeeds": {
-        return <AIDisplayFeedsPart key={partKey} part={part as AIDisplayFeedsTool} />
-      }
+      let chainReasoningParts: ChainReasoningPart[] | null = null
+      for (const part of message.parts) {
+        const isReasoning = part.type === "reasoning" && !!(part as ReasoningUIPart).text
+        const isTool = part.type.startsWith("tool-")
+        const bypassedTool = isTool && shouldBypass(part.type)
 
-      case "tool-displayFlowChart": {
-        const loadingElement = (
-          <div className="my-2 flex aspect-[4/3] w-full items-center justify-center">
-            <div className="flex flex-col items-center gap-4">
-              <div className="flex items-center gap-2">
-                <i className="i-mgc-loading-3-cute-re text-text-secondary size-4 animate-spin" />
-                <span className="text-text-secondary text-sm font-medium">
-                  Generating Flow Chart...
-                </span>
-              </div>
-            </div>
-          </div>
-        )
-        return (
-          <React.Suspense fallback={loadingElement} key={partKey}>
-            <LazyAIDisplayFlowPart
-              part={part as AIDisplayFlowTool}
-              loadingElement={loadingElement}
-            />
-          </React.Suspense>
-        )
-      }
-
-      default: {
-        if (part.type.startsWith("tool-")) {
-          if (part.type.startsWith("tool-chunkBreak")) {
-            return null
+        if (isReasoning) {
+          if (!chainReasoningParts) {
+            chainReasoningParts = []
+            // insert by reference once; keep appending to the same array thereafter
+            parts.push(chainReasoningParts)
           }
-          return <ToolInvocationComponent key={partKey} part={part as ToolUIPart} />
+          chainReasoningParts.push(part as ReasoningUIPart)
+          continue
         }
-        return null
+
+        if (isTool) {
+          if (chainReasoningParts && chainReasoningParts.length > 0 && !bypassedTool) {
+            chainReasoningParts.push(part as ToolUIPart<BizUITools>)
+          } else {
+            parts.push(part as ToolUIPart<BizUITools>)
+          }
+          continue
+        }
+
+        // Only add text to top-level; do not break an active chain
+        if (part.type === "text") {
+          parts.push(part)
+          continue
+        }
+
+        // Unknown/meta parts (e.g., step-start, source) are skipped here without breaking an active chain
       }
-    }
-  })
-})
+
+      // No final flush needed; chain array already referenced in parts
+      return parts
+    }, [message.parts])
+
+    // console.info("displayParts", displayParts)
+
+    const lowPriorityChainParts = React.useDeferredValue(chainThoughtParts)
+
+    return (
+      <>
+        {lowPriorityChainParts.map((partOrParts, index) => {
+          const partKey = `${message.id}-${index}`
+
+          if (Array.isArray(partOrParts)) {
+            const reasoningParts = partOrParts as ChainReasoningPart[]
+            return (
+              <AIChainOfThought
+                key={partKey}
+                groups={reasoningParts}
+                isStreaming={shouldMessageAnimation}
+              />
+            )
+          }
+
+          const part = partOrParts as TextUIPart | ToolUIPart<BizUITools>
+
+          switch (part.type) {
+            case "text": {
+              return (
+                <AIMarkdownStreamingMessage
+                  key={partKey}
+                  text={part.text}
+                  className={"text-text"}
+                  isStreaming={shouldMessageAnimation}
+                />
+              )
+            }
+
+            case "tool-display_flow_chart": {
+              const loadingElement = (
+                <div className="my-2 flex aspect-[4/3] w-[calc(var(--ai-chat-message-container-width,65ch))] max-w-full items-center justify-center rounded bg-material-medium">
+                  <div className="flex flex-col items-center gap-4">
+                    <div className="flex items-center gap-2">
+                      <i className="i-mgc-loading-3-cute-re size-4 animate-spin text-text-secondary" />
+                      <span className="text-sm font-medium text-text-secondary">
+                        Generating Flow Chart...
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              )
+              return (
+                <ErrorBoundary key={partKey} beforeCapture={alwaysFalse}>
+                  <React.Suspense fallback={loadingElement}>
+                    <LazyAIDisplayFlowPart part={part as AIDisplayFlowTool} />
+                  </React.Suspense>
+                </ErrorBoundary>
+              )
+            }
+            case "tool-save_user_memory": {
+              return (
+                <SaveMemoryCard
+                  key={partKey}
+                  part={part as ToolUIPart<BizUITools>}
+                  variant="tight"
+                />
+              )
+            }
+
+            default: {
+              if (part.type.startsWith("tool-")) {
+                return (
+                  <ToolInvocationComponent
+                    key={partKey}
+                    part={part as ToolUIPart<BizUITools>}
+                    variant="tight"
+                  />
+                )
+              }
+
+              return null
+            }
+          }
+        })}
+      </>
+    )
+  },
+)
 
 AIMessageParts.displayName = "AIMessageParts"

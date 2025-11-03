@@ -1,35 +1,40 @@
-import { useCallback, useState } from "react"
+import { useMemo } from "react"
+import { useEventCallback } from "usehooks-ts"
 
-import { AIPersistService } from "~/modules/ai-chat/services/index"
-
-import type { ChatSession } from "../types/ChatSession"
+import { aiChatSessionStoreActions, useAIChatSessionStore } from "~/modules/ai-chat-session/store"
 
 export const useChatHistory = () => {
-  const [sessions, setSessions] = useState<ChatSession[]>([])
-  const [loading, setLoading] = useState(false)
+  const state = useAIChatSessionStore()
 
-  const loadHistory = useCallback(async () => {
-    setLoading(true)
+  const { sessions } = state
+  const loading = state.isLoading || state.isSyncing
+
+  const loadHistory = useEventCallback(async () => {
+    if (loading) return
+
+    aiChatSessionStoreActions.setLoading(true)
+    aiChatSessionStoreActions.clearError()
+
     try {
-      const result = await AIPersistService.getChatSessions()
-      const sessions: ChatSession[] = result.map((row) => ({
-        chatId: row.chatId,
-        title: row.title || "New Chat",
-        createdAt: new Date(row.createdAt),
-        messageCount: row.messageCount,
-      }))
-
-      setSessions(sessions)
+      await aiChatSessionStoreActions.fetchRemoteSessions()
     } catch (error) {
       console.error("Failed to load chat history:", error)
+      aiChatSessionStoreActions.setError(error instanceof Error ? error.message : "Unknown error")
     } finally {
-      setLoading(false)
+      aiChatSessionStoreActions.setSyncing(false)
+      aiChatSessionStoreActions.setLoading(false)
     }
-  }, [])
+  })
 
-  return {
-    sessions,
-    loading,
-    loadHistory,
-  }
+  return useMemo(
+    () => ({
+      sessions,
+      loading,
+      loadHistory,
+      stats: state.stats,
+      lastSyncedAt: state.lastSyncedAt,
+      error: state.error,
+    }),
+    [sessions, loading, loadHistory, state.stats, state.lastSyncedAt, state.error],
+  )
 }

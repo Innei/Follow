@@ -4,7 +4,9 @@ export interface ChatSession {
   chatId: string
   title?: string
   createdAt: Date
-  messageCount: number
+  updatedAt: Date
+  isLocal: boolean
+  syncStatus: "local" | "synced"
 }
 
 export type RichTextPart = {

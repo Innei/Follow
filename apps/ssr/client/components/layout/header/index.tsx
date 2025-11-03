@@ -1,6 +1,5 @@
 import { Folo } from "@follow/components/icons/folo.js"
 import { Logo } from "@follow/components/icons/logo.jsx"
-import { SocialMediaLinks } from "@follow/constants"
 import { cn } from "@follow/utils/utils"
 import type { MotionValue } from "motion/react"
 import { m, useMotionValueEvent, useScroll } from "motion/react"
@@ -34,18 +33,17 @@ const HeaderWrapper: Component = (props) => {
     <header className={"fixed inset-x-0 top-0 z-50 transition-all duration-300 ease-out"}>
       <div
         className={cn(
-          "mx-4 mt-4 transition-all duration-300 ease-out",
+          "mx-4 mt-4 max-w-5xl transition-all duration-300 ease-out lg:mx-auto",
           isCompact ? "mt-2" : "mt-4",
-          isHeaderElevated ? "mx-0 md:mx-4" : "px-4 sm:px-6 lg:px-8",
         )}
       >
         <m.div
           className={cn(
-            "rounded-xl border border-transparent px-4 transition-all duration-300 ease-out",
+            "rounded-full border border-transparent px-6 transition-all duration-300 ease-out",
             "relative flex items-center",
-            isCompact ? "py-2" : "py-3",
+            isCompact ? "py-2 pl-5 pr-2" : "py-3",
             isHeaderElevated && [
-              "border-border/50 bg-background/80 px-4 shadow-sm backdrop-blur-xl md:px-0",
+              "border-border/50 bg-background/80 shadow-sm backdrop-blur-xl",
               "supports-[backdrop-filter]:bg-background/60",
             ],
           )}
@@ -91,41 +89,38 @@ export const Header = () => {
             </a>
           </m.div>
 
-          {/* Enhanced Social Links Section */}
-          <div className="flex shrink-0 items-center">
-            <div
+          {/* Right actions */}
+          <div className="flex shrink-0 items-center gap-2">
+            {/* GitHub stars pill */}
+            <m.a
+              href="https://github.com/RSSNext/Folo"
+              target="_blank"
+              rel="noreferrer"
+              whileHover={{ scale: 1.02 }}
+              whileTap={{ scale: 0.98 }}
               className={cn(
-                "flex items-center gap-2 transition-all duration-300",
-                isCompact ? "gap-1 text-xl" : "gap-2 text-2xl",
+                "inline-flex items-center gap-2 rounded-full border border-fill-tertiary px-6 font-medium",
+                "bg-fill-quinary text-sm text-text backdrop-blur-background hover:bg-fill-tertiary",
+                isCompact ? "h-8" : "h-10",
               )}
             >
-              {SocialMediaLinks.map((link) => (
-                <m.a
-                  key={link.url}
-                  href={link.url}
-                  target="_blank"
-                  rel="noreferrer"
-                  whileHover={{ scale: 1.1, y: -1 }}
-                  whileTap={{ scale: 0.95 }}
-                  className={cn(
-                    "group relative flex items-center justify-center rounded-lg",
-                    "text-text-secondary hover:text-text",
-                    "hover:bg-fill/40 active:bg-fill/60",
-                    isCompact ? "size-8" : "size-10",
-                  )}
-                >
-                  <i
-                    className={cn(
-                      link.iconClassName,
-                      "transition-transform duration-200 group-hover:scale-110",
-                    )}
-                  />
+              <i className="i-mgc-github-cute-fi text-base" />
+              GitHub
+            </m.a>
 
-                  {/* Subtle hover effect */}
-                  <div className="from-blue/10 to-purple/10 absolute inset-0 rounded-lg bg-gradient-to-r opacity-0 transition-opacity duration-200 group-hover:opacity-100" />
-                </m.a>
-              ))}
-            </div>
+            {/* Sign in pill */}
+            <m.a
+              href="/login"
+              whileHover={{ scale: 1.02 }}
+              whileTap={{ scale: 0.98 }}
+              className={cn(
+                "inline-flex items-center justify-center rounded-full px-6 font-medium",
+                "border border-accent/20 bg-accent/90 text-sm text-white shadow-sm hover:shadow",
+                isCompact ? "h-8" : "h-10",
+              )}
+            >
+              Sign in
+            </m.a>
           </div>
         </nav>
       </Container>

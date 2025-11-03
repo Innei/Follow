@@ -1,19 +1,42 @@
 import { autoBindThis } from "@follow/utils/bind-this"
-import type { ChatStatus } from "ai"
+import type { ChatRequestOptions, ChatStatus } from "ai"
+import { merge } from "es-toolkit/compat"
 import { nanoid } from "nanoid"
 import type { StateCreator } from "zustand"
 
 import { AIPersistService } from "../../services"
-import { createChatTransport } from "../transport"
-import type { BizUIMessage } from "../types"
+import { createChatTitleHandler, createChatTransport } from "../transport"
+import type { BizUIMessage, SendingUIMessage } from "../types"
 import { ZustandChat } from "./chat-instance"
 import type { ChatSlice } from "./types"
 
 export class ChatSliceActions {
+  // Hold reference to the most recently constructed (active) ChatSliceActions instance
+  private static _current: ChatSliceActions | null = null
+
+  /**
+   * Get the currently active ChatSliceActions instance.
+   *
+   * WARNING: Anti-pattern — temporary global accessor used. Do NOT use in new code.
+   * This may be removed/refactored.
+   */
+  static getActiveInstance(): ChatSliceActions | null {
+    if (!this._current) return null
+    return this._current
+  }
+
+  /**
+   * See warning above — this setter exists solely for the same limited purpose.
+   */
+  static setActiveInstance(instance: ChatSliceActions | null) {
+    this._current = instance
+  }
+
   constructor(
     private params: Parameters<StateCreator<ChatSlice, [], [], ChatSlice>>,
-    private chatInstance: ZustandChat<BizUIMessage>,
+    private chatInstance: ZustandChat,
   ) {
+    this.chatInstance.resumeStream()
     return autoBindThis(this)
   }
 
@@ -23,6 +46,42 @@ export class ChatSliceActions {
 
   get get() {
     return this.params[1]
+  }
+
+  private computeSyncStatus(isLocal: boolean): "local" | "synced" {
+    return isLocal ? "local" : "synced"
+  }
+
+  private setSyncState(isLocal: boolean) {
+    this.set((state) => {
+      const nextStatus = this.computeSyncStatus(isLocal)
+      if (state.isLocal === isLocal && state.syncStatus === nextStatus) {
+        return state
+      }
+      return {
+        isLocal,
+        syncStatus: nextStatus,
+      }
+    })
+  }
+
+  async markSessionSynced() {
+    const currentChatId = this.get().chatId
+    if (!currentChatId) {
+      return
+    }
+
+    if (!this.get().isLocal) {
+      return
+    }
+
+    this.setSyncState(false)
+
+    try {
+      await AIPersistService.markSessionSynced(currentChatId)
+    } catch (error) {
+      console.error("Failed to mark chat session as synced:", error)
+    }
   }
 
   // Direct message management methods (delegating to chat instance state)
@@ -62,6 +121,10 @@ export class ChatSliceActions {
   }
 
   // Getter
+  getChatInstance = (): ZustandChat => {
+    return this.chatInstance
+  }
+
   getMessages = (): BizUIMessage[] => {
     return this.chatInstance.chatState.messages
   }
@@ -92,8 +155,47 @@ export class ChatSliceActions {
     return this.get().chatId
   }
 
+  private createTransportTitleHandler = (chatId: string) => {
+    return createChatTitleHandler({
+      chatId,
+      getActiveChatId: () => this.get().chatId,
+      onTitleChange: (title) => {
+        this.setCurrentTitle(title)
+      },
+    })
+  }
+
+  // Edit chat title
+  editChatTitle = async (newTitle: string) => {
+    const currentChatId = this.getCurrentChatId()
+    if (!currentChatId) {
+      throw new Error("No active chat to edit title for")
+    }
+
+    const trimmedTitle = newTitle.trim()
+    const currentTitle = this.getCurrentTitle()
+
+    // If no changes, return early
+    if (trimmedTitle === currentTitle) {
+      return
+    }
+
+    try {
+      // Optimistic update
+      this.setCurrentTitle(trimmedTitle)
+
+      // Persist to database
+      await AIPersistService.updateSessionTitle(currentChatId, trimmedTitle)
+    } catch (error) {
+      // Rollback on error
+      this.setCurrentTitle(currentTitle)
+      console.error("Failed to update chat title:", error)
+      throw error
+    }
+  }
+
   // Core chat actions using AI SDK AbstractChat methods
-  sendMessage = async (message: string | BizUIMessage) => {
+  sendMessage = async (message: string | SendingUIMessage, options?: ChatRequestOptions) => {
     try {
       // Convert string to message object if needed
       const messageObj =
@@ -104,19 +206,30 @@ export class ChatSliceActions {
           : (message as Parameters<typeof this.chatInstance.sendMessage>[0])
 
       // Use the AI SDK's sendMessage method
-      const response = await this.chatInstance.sendMessage(messageObj)
-      return response
+      const finalOptions = merge(
+        {
+          body: { scene: this.get().scene },
+        },
+        options,
+      )
+
+      return await this.chatInstance.sendMessage(messageObj, finalOptions)
     } catch (error) {
       this.setError(error as Error)
       throw error
     }
   }
 
-  regenerate = async ({ messageId }: { messageId: string }) => {
+  regenerate = async ({ messageId, ...options }: { messageId: string } & ChatRequestOptions) => {
     try {
       // Use the AI SDK's regenerate method
-      const response = await this.chatInstance.regenerate({ messageId })
-      return response
+      const finalOptions = merge(
+        {
+          body: { scene: this.get().scene },
+        },
+        options,
+      )
+      return await this.chatInstance.regenerate({ messageId, ...finalOptions })
     } catch (error) {
       this.setError(error as Error)
       throw error
@@ -153,11 +266,13 @@ export class ChatSliceActions {
     this.chatInstance.destroy()
 
     // Create new chat instance
-    const newChatInstance = new ZustandChat<BizUIMessage>(
+    const newChatInstance = new ZustandChat(
       {
         id: newChatId,
         messages: [],
-        transport: createChatTransport(),
+        transport: createChatTransport({
+          titleHandler: this.createTransportTitleHandler(newChatId),
+        }),
       },
       this.set,
     )
@@ -172,6 +287,8 @@ export class ChatSliceActions {
       isStreaming: false,
       currentTitle: undefined,
       chatInstance: newChatInstance,
+      isLocal: true,
+      syncStatus: "local",
     }))
 
     // Update the reference
@@ -192,11 +309,13 @@ export class ChatSliceActions {
       this.chatInstance.destroy()
 
       // Create new chat instance with loaded messages
-      const newChatInstance = new ZustandChat<BizUIMessage>(
+      const newChatInstance = new ZustandChat(
         {
           id: chatId,
           messages,
-          transport: createChatTransport(),
+          transport: createChatTransport({
+            titleHandler: this.createTransportTitleHandler(chatId),
+          }),
         },
         this.set,
       )
@@ -211,8 +330,11 @@ export class ChatSliceActions {
         isStreaming: false,
         currentTitle: chatSession?.title || undefined,
         chatInstance: newChatInstance,
+        isLocal: chatSession ? chatSession.isLocal : true,
+        syncStatus: chatSession ? chatSession.syncStatus : "local",
       }))
 
+      newChatInstance.resumeStream()
       // Update the reference
       this.chatInstance = newChatInstance
     } catch (error) {
@@ -221,5 +343,22 @@ export class ChatSliceActions {
       this.setStatus("ready")
       throw error
     }
+  }
+
+  setScene = (scene: ChatSlice["scene"]) => {
+    this.set((state) => ({ ...state, scene }))
+  }
+
+  setTimelineSummaryManualOverride = (override: boolean) => {
+    this.set((state) => {
+      if (state.timelineSummaryManualOverride === override) {
+        return state
+      }
+      return { ...state, timelineSummaryManualOverride: override }
+    })
+  }
+
+  getTimelineSummaryManualOverride = () => {
+    return this.get().timelineSummaryManualOverride
   }
 }

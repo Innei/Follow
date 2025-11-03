@@ -14,12 +14,12 @@ import { useEffect, useRef, useState } from "react"
 import { Trans } from "react-i18next"
 import { useResizable } from "react-resizable-layout"
 
-import { getIsZenMode, getUISettings, setUISetting } from "~/atoms/settings/ui"
+import { getUISettings, setUISetting } from "~/atoms/settings/ui"
 import {
-  getTimelineColumnTempShow,
-  setTimelineColumnTempShow,
-  useTimelineColumnShow,
-  useTimelineColumnTempShow,
+  getSubscriptionColumnTempShow,
+  setSubscriptionColumnTempShow,
+  useSubscriptionColumnShow,
+  useSubscriptionColumnTempShow,
 } from "~/atoms/sidebar"
 import { FloatingLayerScope } from "~/constants"
 import { useBatchUpdateSubscription } from "~/hooks/biz/useSubscriptionActions"
@@ -101,12 +101,13 @@ const FeedResponsiveResizerContainer = ({
     },
   })
 
-  const feedColumnShow = useTimelineColumnShow()
-  const feedColumnTempShow = useTimelineColumnTempShow()
+  const feedColumnShow = useSubscriptionColumnShow()
+  const feedColumnTempShow = useSubscriptionColumnTempShow()
+  const t = useI18n()
 
   useEffect(() => {
     if (feedColumnShow) {
-      setTimelineColumnTempShow(false)
+      setSubscriptionColumnTempShow(false)
       return
     }
     const handler = debounce(
@@ -115,16 +116,16 @@ const FeedResponsiveResizerContainer = ({
         const mouseY = e.clientY
 
         const uiSettings = getUISettings()
-        const feedColumnTempShow = getTimelineColumnTempShow()
-        const isInEntryContentWideMode = uiSettings.wideMode || getIsZenMode()
+        const feedColumnTempShow = getSubscriptionColumnTempShow()
+        const isInEntryContentWideMode = false
         const feedWidth = uiSettings.feedColWidth
         if (mouseY < 200 && isInEntryContentWideMode && mouseX < feedWidth) return
         const threshold = feedColumnTempShow ? uiSettings.feedColWidth : 100
 
         if (mouseX < threshold) {
-          setTimelineColumnTempShow(true)
+          setSubscriptionColumnTempShow(true)
         } else {
-          setTimelineColumnTempShow(false)
+          setSubscriptionColumnTempShow(false)
         }
       },
       36,
@@ -165,7 +166,6 @@ const FeedResponsiveResizerContainer = ({
       timer = clearTimeout(timer)
     }
   }, [feedColumnShow])
-  const t = useI18n()
 
   return (
     <>

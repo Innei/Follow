@@ -2,23 +2,14 @@ import { useEntry } from "@follow/store/entry/hooks"
 import { useFeedById } from "@follow/store/feed/hooks"
 import { cn } from "@follow/utils/utils"
 
+import { Media } from "~/components/ui/media/Media"
 import { readableContentMaxWidthClassName } from "~/constants/ui"
-import { SocialMediaGallery } from "~/modules/entry-column/Items/social-media-item"
 
 import { AuthorHeader } from "./shared/AuthorHeader"
 import { ContentBody } from "./shared/ContentBody"
+import type { EntryLayoutProps } from "./types"
 
-interface SocialMediaLayoutProps {
-  entryId: string
-  compact?: boolean
-  noMedia?: boolean
-  translation?: {
-    content?: string
-    title?: string
-  }
-}
-
-export const SocialMediaLayout: React.FC<SocialMediaLayoutProps> = ({
+export const SocialMediaLayout: React.FC<EntryLayoutProps> = ({
   entryId,
   compact = false,
   noMedia = false,
@@ -30,7 +21,7 @@ export const SocialMediaLayout: React.FC<SocialMediaLayoutProps> = ({
   if (!entry || !feed) return null
 
   return (
-    <div className={cn(readableContentMaxWidthClassName, "mx-auto space-y-5")}>
+    <div className={cn(readableContentMaxWidthClassName, "mx-auto space-y-5 pt-12")}>
       {/* Single Author header without avatar */}
       <AuthorHeader entryId={entryId} />
 
@@ -44,7 +35,19 @@ export const SocialMediaLayout: React.FC<SocialMediaLayoutProps> = ({
       />
 
       {/* Media gallery */}
-      {!noMedia && <SocialMediaGallery entryId={entryId} />}
+      {entry.media &&
+        entry.media.length > 0 &&
+        !noMedia &&
+        entry.media.map((m) => (
+          <div key={m.url} className="mt-4 flex justify-center">
+            <Media
+              src={m.url}
+              type={m.type}
+              previewImageUrl={m.preview_image_url}
+              blurhash={m.blurhash}
+            />
+          </div>
+        ))}
     </div>
   )
 }

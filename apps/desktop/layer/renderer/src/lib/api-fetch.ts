@@ -1,18 +1,11 @@
-import { DEV } from "@follow/shared/constants"
 import { env } from "@follow/shared/env.desktop"
-import type { AppType } from "@follow/shared/hono"
 import { userActions } from "@follow/store/user/store"
 import { createDesktopAPIHeaders } from "@follow/utils/headers"
 import PKG from "@pkg"
-import { hc } from "hono/client"
-import { FetchError, ofetch } from "ofetch"
-import { createElement } from "react"
-import { toast } from "sonner"
+import { ofetch } from "ofetch"
 
 import { NetworkStatus, setApiStatus } from "~/atoms/network"
 import { setLoginModalShow } from "~/atoms/user"
-import { NeedActivationToast } from "~/modules/activation/NeedActivationToast"
-import { DebugRegistry } from "~/modules/debug/registry"
 
 import { getClientId, getSessionId } from "./client-session"
 
@@ -59,58 +52,8 @@ export const apiFetch = ofetch.create({
       if (context.response.status === 400 && json.code === 1003) {
         router.navigate("/invitation")
       }
-      if (json.code.toString().startsWith("11")) {
-        setTimeout(() => {
-          const toastId = toast.error(
-            createElement(NeedActivationToast, {
-              dimiss: () => {
-                toast.dismiss(toastId)
-              },
-            }),
-            {
-              closeButton: true,
-              duration: 10e4,
-
-              classNames: {
-                content: tw`w-full`,
-              },
-            },
-          )
-        }, 500)
-      }
     } catch {
       // ignore
     }
   },
 })
-
-export const apiClient = hc<AppType>(env.VITE_API_URL, {
-  fetch: async (input, options = {}) =>
-    apiFetch(input.toString(), options).catch((err) => {
-      if (err instanceof FetchError && !err.response) {
-        setApiStatus(NetworkStatus.OFFLINE)
-      }
-      throw err
-    }),
-})
-
-if (DEV) {
-  DebugRegistry.add("Activation Toast", () => {
-    setTimeout(() => {
-      const toastId = toast.error(
-        createElement(NeedActivationToast, {
-          dimiss: () => {
-            toast.dismiss(toastId)
-          },
-        }),
-        {
-          closeButton: true,
-          duration: 10e4,
-          classNames: {
-            content: tw`w-full`,
-          },
-        },
-      )
-    }, 500)
-  })
-}

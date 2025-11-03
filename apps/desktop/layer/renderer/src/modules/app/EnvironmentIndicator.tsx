@@ -1,5 +1,6 @@
 /* eslint-disable @eslint-react/dom/no-missing-iframe-sandbox */
 import { Button } from "@follow/components/ui/button/index.js"
+import { Switch } from "@follow/components/ui/switch/index.jsx"
 import {
   Tooltip,
   TooltipContent,
@@ -11,10 +12,73 @@ import { DEV, MODE } from "@follow/shared/constants"
 import { env } from "@follow/shared/env.desktop"
 import { useUserRole } from "@follow/store/user/hooks"
 
+import { useDebugFeatureValue, useSetDebugFeatureValue } from "~/atoms/debug-feature"
 import { PlainModal } from "~/components/ui/modal/stacked/custom-modal"
 import { useModalStack } from "~/components/ui/modal/stacked/hooks"
+import { featureConfigMap } from "~/lib/features"
 
 import { DebugRegistry } from "../debug/registry"
+
+const EnvironmentDebugModalContent = () => {
+  const actionMap = DebugRegistry.getAll()
+  const debugValues = useDebugFeatureValue() as Record<string, boolean>
+  const setDebugValues = useSetDebugFeatureValue()
+
+  const overrideEnabled = !!debugValues.__override
+
+  const handleToggleOverride = (checked: boolean) => {
+    setDebugValues((prev) => ({ ...(prev as Record<string, boolean>), __override: checked }))
+  }
+
+  const handleToggleFeature = (key: string, checked: boolean) => {
+    setDebugValues((prev) => ({ ...(prev as Record<string, boolean>), [key]: checked }))
+  }
+
+  const featureKeys = Object.keys(featureConfigMap)
+
+  return (
+    <div className="flex flex-col gap-4">
+      <div className="space-y-2">
+        <div className="flex items-center justify-between">
+          <div className="text-sm font-medium text-text">Debug override features</div>
+          <Switch checked={overrideEnabled} onCheckedChange={handleToggleOverride} />
+        </div>
+        <p className="text-xs text-text-secondary">
+          When enabled, the switches below override server feature flags locally.
+        </p>
+        <div className="rounded-md bg-material-medium p-2">
+          <div className="grid grid-cols-1 gap-2">
+            {featureKeys.map((key) => (
+              <div key={key} className="flex items-center justify-between rounded-md p-2">
+                <span className="text-sm text-text">{key}</span>
+                <Switch
+                  checked={!!debugValues[key]}
+                  onCheckedChange={(v) => handleToggleFeature(key, v)}
+                  disabled={!overrideEnabled}
+                />
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+
+      <div className="space-y-2">
+        <div className="text-sm font-medium text-text">Debug actions</div>
+        <div className="flex flex-col gap-2">
+          {Object.entries(actionMap).map(([key, action]) => (
+            <div key={key} className="flex w-full items-center gap-2">
+              <span className="flex flex-1">{key}</span>
+              <Button variant="outline" type="button" onClick={() => action()}>
+                <i className="i-mgc-play-cute-fi size-3" />
+                <span className="ml-1">Run</span>
+              </Button>
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+  )
+}
 
 export const EnvironmentIndicator = () => {
   const role = useUserRole()
@@ -29,31 +93,13 @@ export const EnvironmentIndicator = () => {
           onClick={() => {
             if (!DEV) return
 
-            const actionMap = DebugRegistry.getAll()
-
             present({
               title: "Debug Actions",
-              content: () => {
-                return (
-                  <div className="flex flex-col gap-2">
-                    {Object.entries(actionMap).map(([key, action]) => {
-                      return (
-                        <div key={key} className="flex w-full items-center gap-2">
-                          <span className="flex flex-1">{key}</span>
-                          <Button variant="outline" type="button" onClick={() => action()}>
-                            <i className="i-mgc-play-cute-fi size-3" />
-                            <span className="ml-1">Run</span>
-                          </Button>
-                        </div>
-                      )
-                    })}
-                  </div>
-                )
-              },
+              content: EnvironmentDebugModalContent,
             })
           }}
         >
-          <div className="center bg-folo fixed bottom-0 right-0 z-[99999] flex rounded-tl px-1 py-0.5 text-xs text-white">
+          <div className="center fixed bottom-0 right-0 z-[99999] flex rounded-tl bg-folo px-1 py-0.5 text-xs text-white">
             {role}:{DEV && <i className="i-mgc-bug-cute-re size-3" />}
             {MODE}
           </div>

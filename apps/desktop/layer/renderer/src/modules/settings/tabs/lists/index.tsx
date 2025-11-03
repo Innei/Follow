@@ -17,7 +17,7 @@ import {
   TooltipPortal,
   TooltipTrigger,
 } from "@follow/components/ui/tooltip/index.jsx"
-import { views } from "@follow/constants"
+import { getView } from "@follow/constants"
 import { useOwnedLists, usePrefetchLists } from "@follow/store/list/hooks"
 import { listSyncServices } from "@follow/store/list/store"
 import { cn, formatNumber } from "@follow/utils/utils"
@@ -157,15 +157,17 @@ export const SettingLists = () => {
                               <span
                                 className={cn(
                                   "inline-flex items-center",
-                                  views[row.view]!.className,
+                                  getView(row.view)?.className,
                                 )}
                               >
-                                {views[row.view]!.icon}
+                                {getView(row.view)?.icon}
                               </span>
                             </TooltipTrigger>
                             <TooltipPortal>
                               <TooltipContent>
-                                {t(views[row.view]!.name, { ns: "common" })}
+                                {t(getView(row.view)!.name, {
+                                  ns: "common",
+                                })}
                               </TooltipContent>
                             </TooltipPortal>
                           </Tooltip>
@@ -173,7 +175,7 @@ export const SettingLists = () => {
                         <TableCell size="sm">
                           <div className="flex items-center gap-1 tabular-nums">
                             {row.fee}
-                            <i className="i-mgc-power text-accent shrink-0 text-lg" />
+                            <i className="i-mgc-power shrink-0 text-lg text-folo" />
                           </div>
                         </TableCell>
                         <TableCell size="sm" className="tabular-nums">

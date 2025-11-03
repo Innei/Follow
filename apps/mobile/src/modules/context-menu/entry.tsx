@@ -12,7 +12,7 @@ import { Share, View } from "react-native"
 
 import { getHideAllReadSubscriptions } from "@/src/atoms/settings/general"
 import { EntryContentWebView } from "@/src/components/native/webview/EntryContentWebView"
-import { preloadWebViewEntry } from "@/src/components/native/webview/webview-manager"
+import { WebViewManager } from "@/src/components/native/webview/webview-manager"
 import { ContextMenu } from "@/src/components/ui/context-menu"
 import { Text } from "@/src/components/ui/typography/Text"
 import { useNavigation } from "@/src/lib/navigation/hooks"
@@ -46,7 +46,7 @@ export const EntryItemContextMenu = ({
     if (entry) {
       const fullEntry = getEntry(id)
       if (fullEntry) {
-        preloadWebViewEntry(fullEntry)
+        WebViewManager.setEntry(fullEntry)
       }
       navigation.pushControllerView(EntryDetailScreen, {
         entryId: id,
@@ -63,8 +63,8 @@ export const EntryItemContextMenu = ({
         <ContextMenu.Preview size="STRETCH" onPress={handlePressPreview}>
           {() => (
             <PortalProvider>
-              <View className="bg-system-background flex-1">
-                <Text className="text-label mt-5 p-4 text-2xl font-semibold" numberOfLines={2}>
+              <View className="flex-1 bg-system-background">
+                <Text className="mt-5 p-4 text-2xl font-semibold text-label" numberOfLines={2}>
                   {entry.title?.trim()}
                 </Text>
                 <EntryContentWebView entryId={id} />

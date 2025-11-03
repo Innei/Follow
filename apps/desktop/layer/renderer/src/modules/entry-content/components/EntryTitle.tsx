@@ -1,10 +1,11 @@
-import { useEntry, useEntryReadHistory } from "@follow/store/entry/hooks"
+import { useEntry } from "@follow/store/entry/hooks"
 import { useFeedById } from "@follow/store/feed/hooks"
 import { useInboxById } from "@follow/store/inbox/hooks"
 import { useEntryTranslation } from "@follow/store/translation/hooks"
-import { useWhoami } from "@follow/store/user/hooks"
-import { formatEstimatedMins, formatTimeToSeconds } from "@follow/utils"
+import { cn, formatEstimatedMins, formatTimeToSeconds } from "@follow/utils"
+import { useMemo } from "react"
 import { titleCase } from "title-case"
+import { useShallow } from "zustand/shallow"
 
 import { useShowAITranslation } from "~/atoms/ai-translation"
 import { useActionLanguage } from "~/atoms/settings/general"
@@ -17,66 +18,89 @@ import { FeedIcon } from "~/modules/feed/feed-icon"
 import { getPreferredTitle } from "~/store/feed/hooks"
 
 import { EntryTranslation } from "../../entry-column/translation"
+import { EntryReadHistory } from "./entry-read-history"
 
 interface EntryLinkProps {
   entryId: string
   compact?: boolean
+  containerClassName?: string
+  noRecentReader?: boolean
 }
 
-export const EntryTitle = ({ entryId, compact }: EntryLinkProps) => {
-  const user = useWhoami()
-  const entry = useEntry(entryId, (state) => {
-    const { feedId, inboxHandle } = state
-    const { author, authorAvatar, authorUrl, publishedAt, title } = state
+export const EntryTitle = ({
+  entryId,
+  compact,
+  containerClassName,
+  noRecentReader,
+}: EntryLinkProps) => {
+  const entry = useEntry(
+    entryId,
+    useShallow((state) => {
+      /// keep-sorted
+      const { author, authorAvatar, authorUrl, feedId, inboxHandle, publishedAt, title } = state
 
-    const attachments = state.attachments || []
-    const { duration_in_seconds } =
-      attachments?.find((attachment) => attachment.duration_in_seconds) ?? {}
-    const seconds = duration_in_seconds ? formatTimeToSeconds(duration_in_seconds) : undefined
-    const estimatedMins = seconds ? formatEstimatedMins(Math.floor(seconds / 60)) : undefined
+      const attachments = state.attachments || []
+      const { duration_in_seconds } =
+        attachments?.find((attachment) => attachment.duration_in_seconds) ?? {}
+      const seconds = duration_in_seconds ? formatTimeToSeconds(duration_in_seconds) : undefined
+      const estimatedMins = seconds ? formatEstimatedMins(Math.floor(seconds / 60)) : undefined
 
-    const media = state.media || []
-    const firstPhoto = media.find((a) => a.type === "photo")
-    const firstPhotoUrl = firstPhoto?.url
-    const iconEntry: FeedIconEntry = { firstPhotoUrl, authorAvatar }
-    const titleEntry = { authorUrl }
+      const media = state.media || []
+      const firstPhoto = media.find((a) => a.type === "photo")
+      const firstPhotoUrl = firstPhoto?.url
 
-    return {
-      author,
-      estimatedMins,
-      feedId,
-      iconEntry,
-      inboxId: inboxHandle,
-      publishedAt,
-      title,
-      titleEntry,
-    }
-  })
+      /// keep-sorted
+      return {
+        author,
+        authorAvatar,
+        authorUrl,
+        estimatedMins,
+        feedId,
+        firstPhotoUrl,
+        inboxId: inboxHandle,
+        publishedAt,
+        title,
+      }
+    }),
+  )
+
+  const hideRecentReader = useUISettingKey("hideRecentReader")
 
   const feed = useFeedById(entry?.feedId)
   const inbox = useInboxById(entry?.inboxId)
-  const data = useEntryReadHistory(entryId)
-  const entryHistory = data?.entryReadHistories
   const populatedFullHref = useFeedSafeUrl(entryId)
   const enableTranslation = useShowAITranslation()
   const actionLanguage = useActionLanguage()
   const translation = useEntryTranslation({
     entryId,
     language: actionLanguage,
-    setting: enableTranslation,
+    enabled: enableTranslation,
   })
 
   const dateFormat = useUISettingKey("dateFormat")
 
   const navigateEntry = useNavigateEntry()
 
-  const hideRecentReader = useUISettingKey("hideRecentReader")
+  const iconEntry: FeedIconEntry = useMemo(
+    () => ({
+      firstPhotoUrl: entry?.firstPhotoUrl,
+      authorAvatar: entry?.authorAvatar,
+    }),
+    [entry?.firstPhotoUrl, entry?.authorAvatar],
+  )
+
+  const titleEntry = useMemo(
+    () => ({
+      authorUrl: entry?.authorUrl,
+    }),
+    [entry?.authorUrl],
+  )
 
   if (!entry) return null
 
   return compact ? (
-    <div className="cursor-button @sm:-mx-3 @sm:p-3 -mx-6 flex items-center gap-2 rounded-lg p-6 transition-colors">
-      <FeedIcon fallback feed={feed || inbox} entry={entry.iconEntry} size={50} />
+    <div className="-mx-6 flex cursor-button items-center gap-2 rounded-lg p-6 transition-colors @sm:-mx-3 @sm:p-3">
+      <FeedIcon fallback target={feed || inbox} entry={iconEntry} size={50} />
       <div className="leading-6">
         <div className="flex items-center gap-1 text-base font-semibold">
           <span>{entry.author || feed?.title || inbox?.title}</span>
@@ -87,28 +111,26 @@ export const EntryTitle = ({ entryId, compact }: EntryLinkProps) => {
       </div>
     </div>
   ) : (
-    <div className="group relative block min-w-0 rounded-lg">
+    <div className={cn("group relative block min-w-0", containerClassName)}>
       <div className="flex flex-col gap-3">
-        <div>
-          <a
-            href={populatedFullHref ?? "#"}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="cursor-link hover:multi-[scale-[1.01];opacity-95] inline-block select-text break-words text-[1.7rem] font-bold leading-normal duration-200"
-          >
-            <EntryTranslation
-              source={titleCase(entry.title ?? "")}
-              target={titleCase(translation?.title ?? "")}
-              className="text-text inline-block select-text hyphens-auto duration-200"
-              inline={false}
-              bilingual
-            />
-          </a>
-        </div>
+        <a
+          href={populatedFullHref ?? "#"}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="inline-block cursor-link select-text break-words text-[1.7rem] font-bold leading-normal duration-200 hover:multi-[scale-[1.01];opacity-95]"
+        >
+          <EntryTranslation
+            source={titleCase(entry.title ?? "")}
+            target={titleCase(translation?.title ?? "")}
+            className="autospace-normal inline-block select-text hyphens-auto text-text duration-200"
+            inline={false}
+            bilingual
+          />
+        </a>
 
         {/* Meta Information with improved layout */}
         <div className="flex flex-wrap items-center gap-x-6 gap-y-2 text-sm">
-          <div className="text-text-secondary [&>div:hover]:multi-[text-text] flex flex-wrap items-center gap-4 [&>div]:transition-colors">
+          <div className="flex flex-wrap items-center gap-4 text-text-secondary [&>div:hover]:multi-[text-text] [&>div]:transition-colors">
             <div
               className="flex items-center text-xs font-medium"
               onClick={() =>
@@ -117,9 +139,28 @@ export const EntryTitle = ({ entryId, compact }: EntryLinkProps) => {
                 })
               }
             >
-              <FeedIcon fallback feed={feed || inbox} entry={entry.iconEntry} size={16} />
-              {getPreferredTitle(feed || inbox, entry.titleEntry)}
+              <FeedIcon fallback target={feed || inbox} entry={iconEntry} size={16} />
+              {getPreferredTitle(feed || inbox, titleEntry)}
             </div>
+
+            {entry.author && (
+              <div className="flex items-center gap-1.5">
+                <i className="i-mgc-user-3-cute-re text-base" />
+                {entry.authorUrl ? (
+                  <a
+                    href={entry.authorUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-xs font-medium transition-colors hover:text-text"
+                  >
+                    {entry.author}
+                  </a>
+                ) : (
+                  <span className="text-xs font-medium">{entry.author}</span>
+                )}
+              </div>
+            )}
+
             <div className="flex items-center gap-1.5">
               <i className="i-mgc-calendar-time-add-cute-re text-base" />
               <span className="text-xs tabular-nums">
@@ -133,21 +174,10 @@ export const EntryTitle = ({ entryId, compact }: EntryLinkProps) => {
                 <span className="text-xs tabular-nums">{entry.estimatedMins}</span>
               </div>
             )}
-
-            {(() => {
-              const readCount =
-                (entryHistory?.readCount ?? 0) +
-                (entryHistory?.userIds?.every((id) => id !== user?.id) ? 1 : 0)
-
-              return readCount > 0 && !hideRecentReader ? (
-                <div className="flex items-center gap-1.5">
-                  <i className="i-mgc-eye-2-cute-re text-base" />
-                  <span className="text-xs tabular-nums">{readCount.toLocaleString()}</span>
-                </div>
-              ) : null
-            })()}
           </div>
         </div>
+        {/* Recent Readers */}
+        {!noRecentReader && !hideRecentReader && <EntryReadHistory entryId={entryId} />}
       </div>
     </div>
   )

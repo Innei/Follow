@@ -5,10 +5,12 @@ import { LetsIconsResizeDownRightLight } from "@follow/components/icons/resize.j
 import { IN_ELECTRON } from "@follow/shared/constants"
 import { preventDefault } from "@follow/utils/dom"
 import { cn, getOS } from "@follow/utils/utils"
+import { atom, useAtomValue, useSetAtom } from "jotai"
 import type { BoundingBox } from "motion/react"
 import { Resizable } from "re-resizable"
 import type { PropsWithChildren } from "react"
-import { memo, Suspense, useCallback, useEffect, useRef } from "react"
+import { memo, Suspense, use, useCallback, useMemo, useRef } from "react"
+import { createPortal } from "react-dom"
 
 import { useUISettingSelector } from "~/atoms/settings/ui"
 import { m } from "~/components/common/Motion"
@@ -24,17 +26,12 @@ import { useAvailableSettings, useSettingPageContext } from "../hooks/use-settin
 import { SettingsSidebarTitle } from "../title"
 import type { SettingPageConfig } from "../utils"
 import { DisableWhy } from "../utils"
-import { useSetSettingTab, useSettingTab } from "./context"
+import { SettingModalContentPortalableContext, useSetSettingTab, useSettingTab } from "./context"
 import { defaultCtx, SettingContext } from "./hooks"
 
-export function SettingModalLayout(
-  props: PropsWithChildren<{
-    initialTab?: string
-  }>,
-) {
-  const { children, initialTab } = props
-  const setTab = useSetSettingTab()
-  const tab = useSettingTab()
+export function SettingModalLayout(props: PropsWithChildren) {
+  const { children } = props
+
   const elementRef = useRef<HTMLDivElement>(null)
   const edgeElementRef = useRef<HTMLDivElement>(null)
   const {
@@ -51,17 +48,6 @@ export function SettingModalLayout(
     draggable: true,
   })
 
-  const availableSettings = useAvailableSettings()
-  useEffect(() => {
-    if (!tab) {
-      if (initialTab) {
-        setTab(initialTab)
-      } else {
-        setTab(availableSettings[0]!.path)
-      }
-    }
-  }, [availableSettings])
-
   const { draggable, overlay } = useUISettingSelector((state) => ({
     draggable: state.modalDraggable,
     overlay: state.modalOverlay,
@@ -77,6 +63,10 @@ export function SettingModalLayout(
     return constraints
   }).current
 
+  const portalableCtxValue = useMemo(() => {
+    return atom(null as any)
+  }, [])
+
   return (
     <div
       id={SETTING_MODAL_ID}
@@ -90,8 +80,8 @@ export function SettingModalLayout(
         }}
         transition={Spring.presets.smooth}
         className={cn(
-          "border-border relative flex overflow-hidden rounded-xl rounded-br-none border",
-          !overlay && "shadow-perfect",
+          "relative flex overflow-hidden rounded-xl rounded-br-none border border-border",
+          !overlay && "shadow-modal",
         )}
         style={resizeableStyle}
         onContextMenu={preventDefault}
@@ -126,7 +116,7 @@ export function SettingModalLayout(
               <div className="absolute inset-x-0 top-0 z-[1] h-8" onPointerDown={handleDrag} />
             )}
             <div className="flex h-0 flex-1" ref={elementRef}>
-              <div className="backdrop-blur-background bg-sidebar border-r-border flex min-h-0 min-w-44 max-w-[20ch] flex-col rounded-l-xl border-r px-2 py-6">
+              <div className="flex min-h-0 min-w-44 max-w-[20ch] flex-col rounded-l-xl border-r border-r-border bg-sidebar px-2 py-6 backdrop-blur-background">
                 <div className="mb-4 flex h-8 items-center gap-2 px-2 font-bold">
                   <Logo className="mr-1 size-6" />
 
@@ -141,17 +131,25 @@ export function SettingModalLayout(
                   <SettingSyncIndicator />
                 </div>
               </div>
-              <div className="bg-background relative flex h-full min-w-0 flex-1 flex-col pt-1">
-                <Suspense>{children}</Suspense>
+              <div className="relative flex h-full min-w-0 flex-1 flex-col bg-background pt-1">
+                <SettingModalContentPortalableContext value={portalableCtxValue}>
+                  <Suspense>{children}</Suspense>
+                  <SettingModalContentPortalable />
+                </SettingModalContentPortalableContext>
               </div>
             </div>
 
-            <LetsIconsResizeDownRightLight className="text-border pointer-events-none absolute bottom-0 right-0 size-6 translate-x-px translate-y-px" />
+            <LetsIconsResizeDownRightLight className="pointer-events-none absolute bottom-0 right-0 size-6 translate-x-px translate-y-px text-border" />
           </Resizable>
         </SettingContext.Provider>
       </m.div>
     </div>
   )
+}
+
+const SettingModalContentPortalable = () => {
+  const setElement = useSetAtom(use(SettingModalContentPortalableContext))
+  return <div ref={setElement as any} />
 }
 
 const SettingItemButtonImpl = (props: {
@@ -172,9 +170,9 @@ const SettingItemButtonImpl = (props: {
   return (
     <button
       className={cn(
-        "text-text my-0.5 flex w-full items-center rounded-lg px-2.5 py-0.5 leading-loose",
+        "my-0.5 flex w-full items-center rounded-lg px-2.5 py-0.5 leading-loose text-text",
         isActive && "!bg-theme-item-active !text-text",
-        !IN_ELECTRON && "hover:bg-theme-item-hover duration-200",
+        !IN_ELECTRON && "duration-200 hover:bg-theme-item-hover",
         disabled && "cursor-not-allowed opacity-50",
       )}
       type="button"
@@ -220,3 +218,8 @@ export const SidebarItems = memo((props: { onChange?: (tab: string) => void }) =
     )
   })
 })
+
+export const SettingModalContentPortal: Component = ({ children }) => {
+  const element = useAtomValue(use(SettingModalContentPortalableContext))
+  return createPortal(children, element)
+}

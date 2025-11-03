@@ -13,7 +13,7 @@ import { View } from "react-native"
 
 import { useActionLanguage, useGeneralSettingKey } from "@/src/atoms/settings/general"
 import { useUISettingKey } from "@/src/atoms/settings/ui"
-import { preloadWebViewEntry } from "@/src/components/native/webview/webview-manager"
+import { WebViewManager } from "@/src/components/native/webview/webview-manager"
 import { RelativeDateTime } from "@/src/components/ui/datetime/RelativeDateTime"
 import { FeedIcon } from "@/src/components/ui/icon/feed-icon"
 import { Image } from "@/src/components/ui/image/Image"
@@ -59,7 +59,7 @@ export const EntryNormalItem = memo(
     const translation = useEntryTranslation({
       entryId,
       language: actionLanguage,
-      setting: enableTranslation,
+      enabled: enableTranslation,
     })
     const from = getInboxFrom(entry)
     const feed = useFeedById(entry?.feedId as string)
@@ -67,7 +67,7 @@ export const EntryNormalItem = memo(
     const handlePress = useCallback(() => {
       if (entry) {
         const fullEntry = getEntry(entryId)
-        preloadWebViewEntry(fullEntry)
+        WebViewManager.setEntry(fullEntry)
         tracker.navigateEntry({
           feedId: entry.feedId!,
           entryId: entry.id,
@@ -101,7 +101,7 @@ export const EntryNormalItem = memo(
           {!entry.read && (
             <View
               className={cn(
-                "bg-red absolute left-2 size-2 rounded-full",
+                "absolute left-2 size-2 rounded-full bg-red",
                 view === FeedViewType.Notifications ? "top-[35]" : "top-[43]",
               )}
             />
@@ -109,21 +109,21 @@ export const EntryNormalItem = memo(
           <View className="flex-1 space-y-2 self-start">
             <View className="mb-1 flex-row items-center gap-1.5 pr-2">
               <FeedIcon fallback feed={feed} size={view === FeedViewType.Notifications ? 14 : 16} />
-              <Text numberOfLines={1} className="text-secondary-label shrink text-sm font-medium">
+              <Text numberOfLines={1} className="shrink text-sm font-medium text-secondary-label">
                 {feed?.title || from || "Unknown feed"}
               </Text>
-              <Text className="text-secondary-label text-xs font-medium">·</Text>
+              <Text className="text-xs font-medium text-secondary-label">·</Text>
               {estimatedMins ? (
                 <>
-                  <Text className="text-secondary-label text-xs font-medium">
+                  <Text className="text-xs font-medium text-secondary-label">
                     {formatEstimatedMins(estimatedMins)}
                   </Text>
-                  <Text className="text-secondary-label text-xs font-medium">·</Text>
+                  <Text className="text-xs font-medium text-secondary-label">·</Text>
                 </>
               ) : null}
               <RelativeDateTime
                 date={entry.publishedAt}
-                className="text-secondary-label text-xs font-medium"
+                className="text-xs font-medium text-secondary-label"
               />
             </View>
             {!!entry.title && (
@@ -131,7 +131,7 @@ export const EntryNormalItem = memo(
                 numberOfLines={2}
                 className={cn(
                   view === FeedViewType.Notifications ? "text-base" : "text-lg",
-                  "text-label font-semibold",
+                  "font-semibold text-label",
                 )}
                 source={entry.title}
                 target={translation?.title}
@@ -142,7 +142,7 @@ export const EntryNormalItem = memo(
             {view !== FeedViewType.Notifications && !!entry.description && (
               <EntryTranslation
                 numberOfLines={2}
-                className="text-secondary-label my-0 text-sm"
+                className="my-0 text-sm text-secondary-label"
                 source={entry.description}
                 target={translation?.description}
                 showTranslation={!!entry.translation}
@@ -296,7 +296,7 @@ const AspectRatioImage = ({
     scaledHeight = scaledWidth * aspect
   }
   return (
-    <View className="bg-tertiary-system-background flex max-w-full items-center justify-center overflow-hidden rounded-lg">
+    <View className="flex max-w-full items-center justify-center overflow-hidden rounded-lg bg-tertiary-system-background">
       <Image
         proxy={{
           width: 96,

@@ -1,5 +1,5 @@
 import { isMobile } from "@follow/components/hooks/useMobile.js"
-import { FeedViewType, UserRole, views } from "@follow/constants"
+import { FeedViewType, getView, UserRole } from "@follow/constants"
 import { IN_ELECTRON } from "@follow/shared/constants"
 import { useIsEntryStarred } from "@follow/store/collection/hooks"
 import { useEntry } from "@follow/store/entry/hooks"
@@ -7,7 +7,6 @@ import { entrySyncServices } from "@follow/store/entry/store"
 import type { EntryModel } from "@follow/store/entry/types"
 import { useFeedById } from "@follow/store/feed/hooks"
 import { useIsInbox } from "@follow/store/inbox/hooks"
-import { whoami } from "@follow/store/user/getters"
 import { useUserRole } from "@follow/store/user/hooks"
 import { doesTextContainHTML } from "@follow/utils/utils"
 import { useMemo } from "react"
@@ -21,7 +20,6 @@ import {
   setReadabilityStatus,
   useEntryIsInReadability,
 } from "~/atoms/readability"
-import { useAIChatPinned } from "~/atoms/settings/ai"
 import { useIntegrationSettingValue } from "~/atoms/settings/integration"
 import { useShowSourceContent } from "~/atoms/source-content"
 import { ipcServices } from "~/lib/client"
@@ -31,7 +29,6 @@ import { useCommandShortcuts } from "~/modules/command/hooks/use-command-binding
 import type { FollowCommandId } from "~/modules/command/types"
 import { useToolbarOrderMap } from "~/modules/customize-toolbar/hooks"
 
-import { useFeature } from "./useFeature"
 import { useRouteParams } from "./useRouteParams"
 
 export const enableEntryReadability = async ({ id, url }: { id: string; url: string }) => {
@@ -208,29 +205,22 @@ const entrySelector = (state: EntryModel) => {
     hasBitTorrent: attachments.some((a) => a.mime_type === "application/x-bittorrent"),
   }
 }
-export const HIDE_ACTIONS_IN_ENTRY_CONTEXT_MENU = [
+export const HIDE_ACTIONS_IN_ENTRY_CONTEXT_MENU: FollowCommandId[] = [
   COMMAND_ID.entry.viewSourceContent,
   COMMAND_ID.entry.toggleAISummary,
   COMMAND_ID.entry.toggleAITranslation,
-  COMMAND_ID.global.toggleAIChatPinned,
+
   COMMAND_ID.settings.customizeToolbar,
   COMMAND_ID.entry.readability,
   COMMAND_ID.entry.exportAsPDF,
-  // Copy
-  COMMAND_ID.entry.copyTitle,
-  COMMAND_ID.entry.copyLink,
 ]
-export const useEntryActions = ({
-  entryId,
-  view,
-  compact,
-}: {
-  entryId: string
-  view: FeedViewType
-  compact?: boolean
-}) => {
+
+export const HIDE_ACTIONS_IN_ENTRY_TOOLBAR_ACTIONS: FollowCommandId[] = [
+  ...HIDE_ACTIONS_IN_ENTRY_CONTEXT_MENU,
+]
+export const useEntryActions = ({ entryId, view }: { entryId: string; view: FeedViewType }) => {
   const entry = useEntry(entryId, entrySelector)
-  const { isCollection } = useRouteParams()
+  const { isCollection, entryId: routeEntryId } = useRouteParams()
   const isInCollection = useIsEntryStarred(entryId)
   const isEntryInReadability = useEntryIsInReadability(entryId)
 
@@ -249,8 +239,7 @@ export const useEntryActions = ({
   const isShowAISummaryOnce = useShowAISummaryOnce()
   const isShowAITranslationAuto = useShowAITranslationAuto(!!entry?.translation)
   const isShowAITranslationOnce = useShowAITranslationOnce()
-  const isShowAIChatPinned = useAIChatPinned()
-  const aiEnabled = useFeature("ai")
+
   const runCmdFn = useRunCommandFn()
   const hasEntry = !!entry
 
@@ -258,6 +247,8 @@ export const useEntryActions = ({
   const integrationSettings = useIntegrationSettingValue()
 
   const shortcuts = useCommandShortcuts()
+
+  const isCurrentVisitEntry = routeEntryId === entryId
 
   const actionConfigs: EntryActionItem[] = useMemo(() => {
     if (!hasEntry) return []
@@ -310,16 +301,6 @@ export const useEntryActions = ({
         entryId,
       }),
       new EntryActionMenuItem({
-        id: COMMAND_ID.entry.tip,
-        onClick: runCmdFn(COMMAND_ID.entry.tip, [
-          { entryId, feedId: feed?.id, userId: feed?.ownerUserId },
-        ]),
-        hide: isInbox || feed?.ownerUserId === whoami()?.id,
-        // shortcut: shortcuts.entry.tip.key,
-        shortcut: shortcuts[COMMAND_ID.entry.tip],
-        entryId,
-      }),
-      new EntryActionMenuItem({
         id: COMMAND_ID.entry.star,
         onClick: runCmdFn(COMMAND_ID.entry.star, [{ entryId, view }]),
         active: isInCollection,
@@ -341,6 +322,7 @@ export const useEntryActions = ({
       }),
       new EntryActionMenuItem({
         id: COMMAND_ID.entry.exportAsPDF,
+        hide: !isCurrentVisitEntry,
         onClick: runCmdFn(COMMAND_ID.entry.exportAsPDF, [{ entryId }]),
         entryId,
       }),
@@ -375,7 +357,6 @@ export const useEntryActions = ({
             view,
           ),
         active: isShowAISummaryOnce,
-        disabled: userRole === UserRole.Free || userRole === UserRole.Trial,
         entryId,
       }),
       new EntryActionMenuItem({
@@ -428,25 +409,17 @@ export const useEntryActions = ({
       new EntryActionMenuItem({
         id: COMMAND_ID.entry.tts,
         onClick: runCmdFn(COMMAND_ID.entry.tts, [{ entryId }]),
-        hide: !IN_ELECTRON || compact || !entry.hasContent,
+        hide: !IN_ELECTRON || !entry.hasContent,
         shortcut: shortcuts[COMMAND_ID.entry.tts],
         entryId,
       }),
       new EntryActionMenuItem({
         id: COMMAND_ID.entry.readability,
         onClick: runCmdFn(COMMAND_ID.entry.readability, [{ entryId, entryUrl: entry.url! }]),
-        hide: !!entry.readability || compact || (view && views[view]!.wideMode) || !entry.url,
+        hide: !!entry.readability || (view && getView(view)?.wideMode) || !entry.url,
         active: isEntryInReadability,
         notice: !entry.doesContentContainsHTMLTags && !isEntryInReadability,
         entryId,
-      }),
-
-      new EntryActionMenuItem({
-        id: COMMAND_ID.global.toggleAIChatPinned,
-        onClick: runCmdFn(COMMAND_ID.global.toggleAIChatPinned, [{ entryId }]),
-        entryId,
-        active: isShowAIChatPinned,
-        hide: !aiEnabled,
       }),
 
       // Custom Integration with sub-menu
@@ -504,6 +477,7 @@ export const useEntryActions = ({
     shortcuts,
     view,
     isInCollection,
+    isCurrentVisitEntry,
     isShowSourceContent,
     isShowAISummaryAuto,
     isShowAISummaryOnce,
@@ -511,10 +485,7 @@ export const useEntryActions = ({
     isShowAITranslationAuto,
     isShowAITranslationOnce,
     isCollection,
-    compact,
     isEntryInReadability,
-    isShowAIChatPinned,
-    aiEnabled,
     integrationSettings.customIntegration,
     integrationSettings.enableCustomIntegration,
   ])
@@ -525,13 +496,11 @@ export const useEntryActions = ({
 export const useSortedEntryActions = ({
   entryId,
   view,
-  compact,
 }: {
   entryId: string
   view: FeedViewType
-  compact?: boolean
 }) => {
-  const entryActions = useEntryActions({ entryId, view, compact })
+  const entryActions = useEntryActions({ entryId, view })
   const orderMap = useToolbarOrderMap()
   const mainAction = useMemo(
     () =>
